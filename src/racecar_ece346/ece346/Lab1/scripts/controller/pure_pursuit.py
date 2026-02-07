@@ -132,7 +132,7 @@ class PurePursuitController(Node):
         #   - subscribes to the topic <self.control_topic>
         #   - has message type <ServoMsg> (racecar_msgs.msg.Odometry) 
         #   - with queue size 1
-        self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
+        self.control_pub = None # TO BE FILLED
         ########################### END OF TODO 1#################################
         
             
@@ -149,7 +149,7 @@ class PurePursuitController(Node):
         #   - has message type <Odometry> (nav_msgs.msg.Odometry) 
         #   - with callback function <self.odometry_callback>, which has already been implemented
         #   - with queue size 1
-        self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 1)
+        self.pose_sub = None # TO BE FILLED
         ########################### END OF TODO 2#################################
         
     def odometry_callback(self, odom_msg: Odometry):
@@ -180,9 +180,8 @@ class PurePursuitController(Node):
         #   and create a 3-dim numpy array [x,y,1]
         # 3. add the goal to the buffer (self.goal_buffer)
         
-        goal_x = goal_msg.pose.position.x 
-        goal_y = goal_msg.pose.position.y 
-        self.goal_buffer.writeFromNonRT(np.array([goal_x, goal_y, 1]))
+        goal_x = np.nan # TO BE FILLED
+        goal_y = np.nan # TO BE FILLED
         
         ########################### END OF TODO 3 #################################
         # Log the goal to the console using "rospy.loginfo"
@@ -271,30 +270,8 @@ class PurePursuitController(Node):
                     # 5. clip the steering angle between "-self.steer_max" and "self.steer_max"
                     # 6. apply the simple proportional controller for the acceleration to track the reference_velocity
                     
-                    if dis2goal <= self.stop_distance:
-                        # if that is the case, stop the car by apply a negative acceleration (eg: -1 m/s^2)
-                        # and zero steering angle. Then, continue to the next iteration
-                        self.publish_control(-1.0, 0.0, state_cur)
-                        continue
-                        
-                    if np.abs(alpha) > np.pi/2:
-                        # If the target is behind the car, apply maximum steering angle
-                        steer = np.sign(alpha) * self.max_steer
-                        # Set the reference_velocity to vel_max
-                        vel_ref = self.max_vel
-                    else:
-                        # Otherwise, apply a pure pursuit controller for steering 
-                        # by assuming the reference path a straight line
-                        # between the car and the goal
-                        # https://thomasfermi.github.io/Algorithms-for-Automated-Driving/Control/PurePursuit.html
-                        ld = min(dis2goal, self.ld_max)
-                        steer = np.arctan2(2*self.wheel_base*np.sin(alpha), ld)                            
-                        # Set the reference_velocity to the minimum of vel_max and (dis2goal-self.stop_distance)
-                        vel_ref = min(self.max_vel, dis2goal-self.stop_distance)                    
-                    # clip the steering angle
-                    steer = min(max(steer, -1*self.max_steer), self.max_steer)
-                    # Apply the simple proportional controller
-                    accel = self.throttle_gain * (vel_ref - vel_cur)
+                    accel = 0 # TO BE FILLED
+                    steer = 0 # TO BE FILLED
                     ########################### END OF TODO 5 ###########################################
                     
                     # publish the control

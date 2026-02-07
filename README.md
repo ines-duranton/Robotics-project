@@ -1,6 +1,6 @@
 # SAFE_ROS2 — ECE346 Racecar Project
 
-ROS 2 Foxy development environment running in Docker. Works on any x86_64 Ubuntu laptop regardless of GPU (AMD, Intel, or NVIDIA).
+ECE346 ROS 2 Foxy development environment running in Docker.
 
 ## Prerequisites
 
@@ -49,45 +49,80 @@ sudo systemctl restart docker
 
 Verify: `nvidia-smi` should show your GPU.
 
-### 3. Clone and build
+### 3. Create a private fork
+
+**If you've never used git before, we recommend this introductory [tutorial](https://www.atlassian.com/git/tutorials).**
+
+1. In the upper-right corner of any page on [GitHub](https://github.com/), select '+', then click **New repository**.
+
+2. Type `ECE346_GroupXX` as the name for your repository, add a README file, and an optional description.
+
+3. Choose **Private** as your repository visibility.
+
+4. Click **Create repository**.
+
+5. In your terminal, clone the course repository:
+    ```bash
+    git clone https://github.com/SafeRoboticsLab/ECE346.git
+    ```
+
+6. From inside the cloned directory, rename the original `ECE346` GitHub repo to `upstream` (default is `origin`), which you'll use to fetch future lab assignments and updates.
+    ```bash
+    cd ECE346
+    git remote rename origin upstream
+    git remote set-url --push upstream DISABLE
+    ```
+
+7. Add your new private repository as a new remote named `origin`. To locate your private repo's URL, navigate to its main page on GitHub, select the green `<> Code` icon, select SSH, and copy this URL to your clipboard.
+    ```bash
+    git remote add origin <URL of your private repo>
+    ```
+
+8. Configure your Git identity. **Note**: run these commands inside your ECE346 directory.
+    ```bash
+    git config --global user.email "your_email@example.com"
+    git config --global user.name "Your Name"
+    ```
+
+9. Push the `SP2026` branch to your private repository, which has now become a private fork of `ECE346`.
+    ```bash
+    git push -u origin SP2026
+    ```
+    If your terminal says "The authenticity of host 'github.com'... continue connecting?" type "yes".
+
+10. Add all course AIs as [collaborators](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-access-to-your-personal-repositories/inviting-collaborators-to-a-personal-repository) to your private fork: navigate to your private repository's **Settings** > **Collaborators and Teams** under **Access** > **Add People** > CalvinTAVN
+
+### 4. Build the Docker image
 
 ```bash
-git clone <repo-url>
-cd SAFE_ROS2
+cd ECE346
 docker compose build
 ```
 
 The first build takes a few minutes (downloads ROS 2 Foxy image + installs all dependencies).
 
-### 4. Start the container
+### 5. Start the container
 
 ```bash
 ./start.sh
 ```
 
-This auto-detects your GPU, starts the container, and opens a shell inside it.
+This starts the container, and opens a shell inside it.
 
-### 5. Build and run (inside the container)
+### 6. Build and run (inside the container)
 
 ```bash
 colcon build --symlink-install
 source install/setup.bash
 ```
 
-Launch a lab:
+From here, go to the individual lab README in `src/racecar_ece346/ece346/` for lab-specific instructions.
 
-```bash
-# Lab 1 — Pure Pursuit Controller
-ros2 launch racecar_ece346 lab1_simulation_launch.py
+---
 
-# Lab 2 — ILQR Trajectory Planning
-ros2 launch racecar_ece346 lab2_simulation_launch.py
+## FAQ
 
-# Lab 3 — FRS + Obstacle Avoidance
-ros2 launch racecar_ece346 Lab3_simulation_launch.py
-```
-
-## Day-to-Day Usage
+### Day-to-Day Usage
 
 ```bash
 ./start.sh          # start container + open shell
@@ -98,10 +133,10 @@ ros2 launch racecar_ece346 Lab3_simulation_launch.py
 To open additional terminal windows into the same container:
 
 ```bash
-docker compose exec ros bash
+sudo docker compose exec ros bash
 ```
 
-## When do I need to rebuild?
+### When do I need to rebuild?
 
 | Change | Action |
 |--------|--------|
@@ -110,30 +145,53 @@ docker compose exec ros bash
 | Change `.msg`, `.srv`, or `CMakeLists.txt` | Run `colcon build` inside the container |
 | Change `Dockerfile` or `requirements.txt` | Run `./start.sh build` |
 
-## Project Structure
+### Project Structure
 
 ```
-SAFE_ROS2/
+ECE346/
 ├── src/
 │   ├── racecar_msgs/        # Custom messages (ServoMsg, OdometryArray, SetArray)
 │   ├── racecar_routing/     # Lanelet2 map routing + services
 │   ├── racecar_interface/   # Simulator, traffic sim, visualization
-│   └── racecar_ece346/      # Lab code (Lab1, Lab2, Lab3)
-├── HOST_setup/linux/        # pyspline wheel
+│   └── racecar_ece346/      # Lab code (Lab1)
+├── HOST_setup/linux/       
 ├── docker/                  # Entrypoint script
 ├── Dockerfile
 ├── docker-compose.yml
 ├── docker-compose.nvidia.yml
 ├── requirements.txt
-└── start.sh                 # Auto-detect GPU and launch
+└── start.sh                 # launch Container
 ```
 
-## Troubleshooting
+### Pushing your lab solutions
 
-**rviz2 shows libGL errors:** The container can't access your GPU. Make sure `/dev/dri` exists on your host (`ls /dev/dri`). For NVIDIA, ensure `nvidia-container-toolkit` is installed.
+When working on labs and making changes to your code, push to your private repo:
+```bash
+git add .
+git commit -m "Completed Lab X"
+git push origin SP2026
+```
 
-**`xhost: command not found`:** Install with `sudo apt-get install x11-xserver-utils`.
+### Pulling future updates from the course repo
 
-**`colcon build` fails with "ament_cmake not found":** You forgot to source ROS 2. Run `source /opt/ros/foxy/setup.bash` first. This happens automatically on new shells after an image rebuild.
+When new labs or updates are released:
+```bash
+# Make sure your changes are committed first
+git add .
+git commit -m "Save current work"
 
-**Permission denied on Docker commands:** Run `sudo usermod -aG docker $USER` then log out and back in.
+# Pull updates from the course repo
+git pull upstream SP2026
+```
+
+If you encounter merge conflicts, this [tutorial](https://www.atlassian.com/git/tutorials/using-branches/merge-conflicts) can help. If you're unsure about merging, you can create a temporary branch first:
+```bash
+git checkout -b temp
+git pull upstream SP2026
+# Inspect changes, then merge into your main branch
+git checkout SP2026
+git merge temp
+git branch --delete temp
+```
+
+
