@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>racecar_ece346</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="cn1182@princeton.edu">ece346-15</maintainer>
+  <license>TODO: License declaration</license>
+
+  <!-- Build tools -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+
+  <!-- Build deps (CMake + Python install + interface generation) -->
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+  <build_depend>builtin_interfaces</build_depend>
+
+
+  <exec_depend>ament_index_python</exec_depend>
+
+  <exec_depend>python3</exec_depend>
+
+  <depend>rclpp</depend>
+  
+
+  <!-- message dependencies -->
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>builtin_interfaces</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>std_srvs</build_depend>
+  <build_depend>racecar_msgs</build_depend>
+
+    <!-- Needed by any package that consumes your generated interfaces -->
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <!-- Python Packages -->
+  <exec_depend>numpy</exec_depend>
+  <exec_depend>scipy</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>threading</exec_depend>
+  <exec_depend>jax</exec_depend>
+  <exec_depend>jaxlib</exec_depend>
+  <exec_depend>pyspline</exec_depend>
+  <exec_depend>typing</exec_depend>
+  <exec_depend>functools</exec_depend>
+  <exec_depend>queue</exec_depend>
+  <exec_depend>time</exec_depend>
+  <exec_depend>hppfcl</exec_depend>
+
+   <!-- Run-time (exec) deps for your Python nodes -->
+  <exec_depend>rclpy</exec_depend>
+
+   <!-- For Services-->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

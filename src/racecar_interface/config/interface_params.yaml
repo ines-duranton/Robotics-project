@@ -1,0 +1,39 @@
+simulator_node:
+  ros__parameters:
+    control_topic: /control
+    odom_topic: /slam_pose
+    pub_rate: 30
+    init_x: 2.0
+    init_y: 0.5
+    init_yaw: 0.0
+    reset_service: /simulation/reset
+
+traffic_simulation_node:
+  ros__parameters:
+    ~num_dyn_obs: 1
+    ~num_static_obs: 1
+    ~static_obs_size: 0.2
+    static_obs_topic: '/Obstacles/Static'
+    dyn_obs_topic: '/Obstacles/Dynamic'
+    pub_rate: 30
+    static_obs_location: ''
+    reset_obstacle_service: '/simulation/reset_static_obstacles'
+
+visualization_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    dyn_obs_topic: Obstacles/Dynamic
+
+routing_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: /Routing/Path
+    routing_pathL_topic: /Routing/PathL
+    routing_pathR_topic: /Routing/PathR
+    goal_topic: /goal_pose
+    #map_file: maps/track.osm
+    
+    

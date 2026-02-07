@@ -1,0 +1,11 @@
+traffic_simulation_node:
+  ros__parameters:
+    ~num_dyn_obs: 1
+    ~num_static_obs: 1
+    ~static_obs_size: 0.2
+    static_obs_topic: '/Obstacles/Static'
+    dyn_obs_topic: '/Obstacles/Dynamic'
+    pub_rate: 30
+    static_obs_location: ''
+    reset_obstacle_service: '/simulation/reset_static_obstacles'
+  

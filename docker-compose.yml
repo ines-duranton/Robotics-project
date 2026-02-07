@@ -1,0 +1,48 @@
+###############################################################################
+# docker-compose.yml – SAFE_ROS2 development container (ROS 2 Foxy)
+#
+# Usage:
+#   docker compose build
+#   docker compose up          # start the container
+#   docker compose exec ros bash   # open a shell inside the running container
+#
+# GUI (rviz2 / rqt):
+#   Run `xhost +local:docker` on the host before starting the container.
+###############################################################################
+
+services:
+  ros:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: safe_ros2_foxy
+    stdin_open: true
+    tty: true
+
+    # --- Networking ---
+    network_mode: host
+
+    # --- GUI / X11 forwarding ---
+    environment:
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - ROS_DOMAIN_ID=0
+      - ROS_WS=/ros2_ws
+    volumes:
+      # X11 socket for GUI apps
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # Mount the src directory into the workspace
+      - ./src:/ros2_ws/src:rw
+      # Persist colcon build artifacts between runs
+      - ros2_build:/ros2_ws/build
+      - ros2_install:/ros2_ws/install
+      - ros2_log:/ros2_ws/log
+
+    # --- GPU passthrough (AMD/Intel via DRI, harmless if not present) ---
+    devices:
+      - /dev/dri:/dev/dri
+
+volumes:
+  ros2_build:
+  ros2_install:
+  ros2_log:

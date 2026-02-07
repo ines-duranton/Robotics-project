@@ -1,0 +1,20 @@
+###############################################################################
+# NVIDIA GPU override – auto-selected by start.sh when NVIDIA GPU is detected
+# Requires: nvidia-container-toolkit
+#
+# On hybrid GPU laptops (Intel + NVIDIA), the display runs on Intel via /dev/dri
+# and NVIDIA is available for compute (CUDA/jax). rviz2 renders through Intel.
+###############################################################################
+services:
+  ros:
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

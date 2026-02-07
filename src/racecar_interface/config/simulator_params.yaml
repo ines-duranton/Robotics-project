@@ -1,0 +1,12 @@
+simulator_node:
+  ros__parameters:
+    control_topic: /control
+    odom_topic: /slam_pose
+    pub_rate: 30
+    init_x: 2.0
+    init_y: 0.5
+    init_yaw: 0.0
+    reset_service: /simulation/reset
+    
+
+    

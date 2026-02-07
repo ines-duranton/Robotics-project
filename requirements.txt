@@ -1,0 +1,14 @@
+# Python dependencies for SAFE_ROS2 (ROS2 Foxy / Ubuntu 20.04 / Python 3.8)
+#
+# Foxy uses Python 3.8, so versions are pinned to the last compatible releases.
+# numpy 1.23.5 avoids the np.float removal (removed in 1.24) that breaks transforms3d.
+# jax 0.4.13 is the last version supporting Python 3.8.
+# scipy 1.10.1 is the last version supporting Python 3.8.
+
+numpy==1.23.5
+scipy==1.10.1
+scikit-learn==1.2.1
+matplotlib
+transforms3d
+PyYAML
+imageio

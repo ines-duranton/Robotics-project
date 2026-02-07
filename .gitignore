@@ -1,0 +1,56 @@
+# ROS 2 colcon build artifacts
+build/
+install/
+log/
+
+# Python cache / temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+*.egg/
+*.log
+
+#virtual environment
+venv
+
+# Colcon / CMake temporary metadata
+.colcon/
+CMakeFiles/
+CMakeCache.txt
+*.cmake
+*.ninja
+*.ninja_deps
+*.ninja_log
+*.o
+*.so
+*.a
+
+# VSCode / JetBrains IDEs / general editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.bak
+
+# Launch or config files generated at runtime
+*.launch.pyc
+*.yaml~
+*.cfg
+
+# ROS Bag files (optional)
+*.db3
+*.bag
+*.bag.active
+*.bag.metadata
+
+# Other common system artifacts
+.DS_Store
+Thumbs.db
+
+# Conda / virtualenv environments
+env/
+venv/
+.venv/
+*.env

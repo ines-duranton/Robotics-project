@@ -1,0 +1,58 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>racecar_routing</name>
+  <version>0.0.1</version>
+  <description>Creates map object, exposes routing service, and publishes nav Paths.</description>
+
+  <maintainer email="cn1182@princeton.edu">Calvin Nguyen</maintainer>
+  <license>Apache-2.0</license>
+
+  <!-- Build tools -->
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Build deps (CMake + Python install + interface generation) -->
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <buildtool_depend>rosidl_default_generators</buildtool_depend>
+
+  <!-- Interface/message deps used by the service definition -->
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>racecar_msgs</build_depend>
+  <build_depend>visualization_msgs</build_depend>
+  <build_depend>builtin_interfaces</build_depend>
+
+  <!-- Run-time (exec) deps for your Python nodes -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>message_filters</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+
+
+
+  <!-- Lanelet2 Python API  -->
+  <exec_depend>lanelet2_core</exec_depend>
+  <exec_depend>lanelet2_routing</exec_depend>
+  <exec_depend>lanelet2_io</exec_depend>
+  <exec_depend>lanelet2_traffic_rules</exec_depend>
+
+  <!-- Python Packages -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>scipy</exec_depend>
+  <exec_depend>numpy</exec_depend>
+  <exec_depend>random</exec_depend>
+  <exec_depend>functools</exec_depend>
+
+  <!-- Needed by any package that consumes your generated interfaces -->
+  <exec_depend>rosidl_default_runtime</exec_depend>
+
+  <exec_depend>python3</exec_depend>
+
+  <!-- since we used a .srv  -->
+  <member_of_group>rosidl_interface_packages</member_of_group>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

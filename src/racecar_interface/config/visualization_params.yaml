@@ -1,0 +1,17 @@
+visualization_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    dyn_obs_topic: Obstacles/Dynamic
+
+routing_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: /Routing/Path
+    routing_pathL_topic: /Routing/PathL
+    routing_pathR_topic: /Routing/PathR
+    goal_topic: /goal_pose
+    #map_file: maps/track.osm
+    

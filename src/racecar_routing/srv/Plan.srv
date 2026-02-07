@@ -1,0 +1,4 @@
+float32[] start
+float32[] goal
+---
+nav_msgs/Path path
