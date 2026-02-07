@@ -29,7 +29,7 @@ ament_python_install_package(ece346)
 
 # Optional: Python executables
 install(PROGRAMS
-  ece346/Lab1/scripts/lab1_node.py
+  ece346/Lab0/scripts/lab0_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -37,13 +37,13 @@ install(PROGRAMS
 
 #config files
 install(DIRECTORY
-  ece346/Lab1/config
+  ece346/Lab0/config
   DESTINATION share/${PROJECT_NAME}
 )
 
 #launch
 install(DIRECTORY
-  ece346/Lab1/launch
+  ece346/Lab0/launch
   DESTINATION share/${PROJECT_NAME}
 )
 

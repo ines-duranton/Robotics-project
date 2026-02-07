@@ -7,16 +7,16 @@ from launch_ros.substitutions import FindPackageShare
 
 def generate_launch_description():
 
-    lab1_share = FindPackageShare('racecar_ece346')
+    lab0_share = FindPackageShare('racecar_ece346')
     racecar_interface_share = FindPackageShare('racecar_interface')
 
-    lab1_rviz = PathJoinSubstitution([racecar_interface_share, 'rviz', 'lab1.rviz'])
+    lab0_rviz = PathJoinSubstitution([racecar_interface_share, 'rviz', 'lab0.rviz'])
 
     #parameters
     default_params_file = PathJoinSubstitution([
         FindPackageShare('racecar_ece346'),
         'config',
-        'lab1.yaml',
+        'lab0.yaml',
     ])
 
     #for parent argument
@@ -33,14 +33,14 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             PathJoinSubstitution([racecar_interface_share, 'launch', 'simulator_launch.py'])
         ),
-        launch_arguments={'param_file': param_file, 'rviz_config': lab1_rviz}.items()
+        launch_arguments={'param_file': param_file, 'rviz_config': lab0_rviz}.items()
     )
 
 
 
-    lab1_node = Node(
+    lab0_node = Node(
         package='racecar_ece346',
-        executable='lab1_node.py',
+        executable='lab0_node.py',
         name='pure_pursuit_controller_node',
         output='screen',
         parameters=[param_file],
@@ -49,5 +49,5 @@ def generate_launch_description():
     return LaunchDescription([
         declare_params,
         simulation_launch,
-        lab1_node,
+        lab0_node,
     ])

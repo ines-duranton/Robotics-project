@@ -1,4 +1,4 @@
-# Lab 1 - Introduction to ROS 2
+# Lab 0 - Introduction to ROS 2
 **[Due 11:59PM Friday, February 13]**
 
 Welcome to the "lab" component of Intelligent Robotic Systems! Over the semester, we will implement various methods for robot decision-making, both in simulated environments and on physical robotic hardware. In this lab we introduce you to essential concepts in ROS 2 (the Robot Operating System), which will be solidified by analyzing and writing your own ROS 2 code. You will then execute your code both in simulation and on your mini truck, which you'll then demonstrate to a course TA. This lab consists largely of reading and learning the basics of how to run your code for future labs. Although collaboration is always encouraged for labs in this course, we strongly encourage that each group member individually reads through this entire lab, as any future lab work will be difficult without this core understanding. Of course, to get the most out of this course and these labs, you should aim to fully understand and contribute to each assignment. If you plan to list ROS on your resume or CV, it will be assumed that you understand the core concepts that we introduce.
@@ -139,10 +139,10 @@ source install/setup.bash
 
 ### Running ROS 2 Nodes with `ros2 launch`
 
-To run our Lab 1 simulation, we use the launch file `lab1_simulation_launch.py`:
+To run our Lab 0 simulation, we use the launch file `lab0_simulation_launch.py`:
 
 ```bash
-ros2 launch racecar_ece346 lab1_simulation_launch.py
+ros2 launch racecar_ece346 lab0_simulation_launch.py
 ```
 
 The key idea of a launch file is to start our node(s) and assign values to parameters using a single command. In ROS 2, launch files are Python scripts (rather than XML as in ROS 1).
@@ -157,16 +157,16 @@ Two windows should pop up when you run the above command. The first window, show
 
 The second window, shown in **Figure 3b**, is the [RQT](https://docs.ros.org/en/foxy/Concepts/About-RQt.html) GUI. It is a versatile tool that allows you to inspect your ongoing ROS processes, visualize data, and tune parameters at runtime. RQT is highly configurable — you can adjust the layout and panels and even create your own plugins.
 
-![Node graph of Lab 1 from RQT GUI](assets/nodes.png)
-***Figure 4**: Node graph of Lab 1 from RQT GUI.*
+![Node graph of Lab 0 from RQT GUI](assets/nodes.png)
+***Figure 4**: Node graph of Lab 0 from RQT GUI.*
 
-From the RQT GUI, let's first take a look at the node graph page. If the node graph is not shown on your GUI, you can add one from **Plugins > Introspection > Node Graph** on the menu bar. **Figure 4** shows a node graph of Lab 1. The `/visualization_node` handles visualization. The `/simulator_node` simulates the dynamics of our robot after executing control commands from the `/pure_pursuit_controller_node`. All these nodes are started with a single `ros2 launch` command. In the next section, we will take a look at the basic functionality of `ros2 launch`.
+From the RQT GUI, let's first take a look at the node graph page. If the node graph is not shown on your GUI, you can add one from **Plugins > Introspection > Node Graph** on the menu bar. **Figure 4** shows a node graph of Lab 0. The `/visualization_node` handles visualization. The `/simulator_node` simulates the dynamics of our robot after executing control commands from the `/pure_pursuit_controller_node`. All these nodes are started with a single `ros2 launch` command. In the next section, we will take a look at the basic functionality of `ros2 launch`.
 
 ## `ros2 launch` Basics ##
-`ros2 launch` is a tool for easily launching multiple ROS 2 nodes, as well as setting parameters. `ros2 launch` takes in one or more Python launch files that specify the parameters to set and nodes to launch. In Lab 1, you just need to know how to interpret a launch file and pass arguments during launch.
+`ros2 launch` is a tool for easily launching multiple ROS 2 nodes, as well as setting parameters. `ros2 launch` takes in one or more Python launch files that specify the parameters to set and nodes to launch. In Lab 0, you just need to know how to interpret a launch file and pass arguments during launch.
 
 ### Reading a Launch File ###
-Let's **take a look** at the launch file you just used. You can find it at `src/racecar_ece346/ece346/Lab1/launch/lab1_simulation_launch.py`.
+Let's **take a look** at the launch file you just used. You can find it at `src/racecar_ece346/ece346/Lab0/launch/lab0_simulation_launch.py`.
 
 The launch file is a Python script that returns a `LaunchDescription` containing:
 
@@ -174,14 +174,14 @@ The launch file is a Python script that returns a `LaunchDescription` containing
 2. **`IncludeLaunchDescription`** — Includes other launch files, allowing nesting (similar to ROS 1's `<include>` tags). Arguments are forwarded via `launch_arguments`.
 3. **`Node`** — Starts a ROS 2 node, specifying its package, executable, name, and parameters.
 
-The parameter file (`lab1.yaml`) is loaded into each node at startup, providing initial values for parameters like `max_throttle`, `max_vel`, `wheel_base`, etc.
+The parameter file (`lab0.yaml`) is loaded into each node at startup, providing initial values for parameters like `max_throttle`, `max_vel`, `wheel_base`, etc.
 
 ### Passing Arguments in `ros2 launch` ###
 
 To pass an argument, append `argument_name:=value` to the launch command. For example:
 
 ```bash
-ros2 launch racecar_ece346 lab1_simulation_launch.py param_file:=/path/to/custom_params.yaml
+ros2 launch racecar_ece346 lab0_simulation_launch.py param_file:=/path/to/custom_params.yaml
 ```
 
 ### Getting ROS 2 Parameters ###
@@ -295,7 +295,7 @@ The `main()` function initializes the ROS 2 Python client library, creates our n
 
 ### Task 1: Set up a publisher for the ServoMsg message ###
 
-Now you know how to publish a ROS 2 message. Let's write our first ROS 2 code! Open your `pure_pursuit.py` file in the text editor of your choice (file path: `src/racecar_ece346/ece346/Lab1/scripts/controller/pure_pursuit.py`). Your first task is to set up a missing publisher in the function `setup_publisher` following instructions under **TODO**. Make sure you read through the code to get an understanding of variable names (e.g., the topic name). You can find the ServoMsg definition in `src/racecar_msgs/msg/ServoMsg.msg`. **Once you are finished**, you can proceed to the next task.
+Now you know how to publish a ROS 2 message. Let's write our first ROS 2 code! Open your `pure_pursuit.py` file in the text editor of your choice (file path: `src/racecar_ece346/ece346/Lab0/scripts/controller/pure_pursuit.py`). Your first task is to set up a missing publisher in the function `setup_publisher` following instructions under **TODO**. Make sure you read through the code to get an understanding of variable names (e.g., the topic name). You can find the ServoMsg definition in `src/racecar_msgs/msg/ServoMsg.msg`. **Once you are finished**, you can proceed to the next task.
 
 ### ROS 2 Subscriber ###
 The code for the subscriber is very similar to the publisher and can be seen below. Now, instead of publishing to the `chatter` topic, we are subscribing to it.
@@ -390,7 +390,7 @@ A full list of `ros2 topic` and `ros2 interface` subcommands can be found with `
 ### Task 3: Fill in the subscriber callback function ###
 Open your `pure_pursuit.py` file. Your third task is to fill in the missing code of the function `goal_callback` following instructions under **TODO**.
 
-Once you are finished, **restart** the simulation (i.e., `ros2 launch racecar_ece346 lab1_simulation_launch.py`). From the RViz simulator, you can add a desired goal location by selecting **2D Goal Pose** from the top panel and then clicking a point on the map. You will see that the position of your clicked point is printed on your terminal.
+Once you are finished, **restart** the simulation (i.e., `ros2 launch racecar_ece346 lab0_simulation_launch.py`). From the RViz simulator, you can add a desired goal location by selecting **2D Goal Pose** from the top panel and then clicking a point on the map. You will see that the position of your clicked point is printed on your terminal.
 
 ### Task 4: Construct and publish a ROS message ###
 
@@ -418,7 +418,7 @@ $\delta = \arctan \left(\frac{2 L \sin(\alpha)}{l_d}\right)$
 In this lab, we assume the reference path is the straight line connecting your robot and goal point. Therefore, the **TP** is a point on this line segment defined by user parameters.
 
 ### Task 5: Implement the goal reaching controller ###
-Open your `pure_pursuit.py` file. You will finish the function `planning_thread` following the implementation details under the **TODO** block. This task concludes all coding parts of Lab 1. Relaunch the simulation, set **2D Goal Pose** in RViz, and drive your robot towards the goal point. The default parameters should work well in the simulation if your implementation is correct.
+Open your `pure_pursuit.py` file. You will finish the function `planning_thread` following the implementation details under the **TODO** block. This task concludes all coding parts of Lab 0. Relaunch the simulation, set **2D Goal Pose** in RViz, and drive your robot towards the goal point. The default parameters should work well in the simulation if your implementation is correct.
 
 You can also tune the controller at runtime using **Dynamic Reconfigure** in RQT (**Plugins > Configuration > Dynamic Reconfigure**). Try adjusting `max_vel` and `throttle_gain` to see how they affect behavior.
 

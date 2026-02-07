@@ -153,7 +153,7 @@ ECE346/
 │   ├── racecar_msgs/        # Custom messages (ServoMsg, OdometryArray, SetArray)
 │   ├── racecar_routing/     # Lanelet2 map routing + services
 │   ├── racecar_interface/   # Simulator, traffic sim, visualization
-│   └── racecar_ece346/      # Lab code (Lab1)
+│   └── racecar_ece346/      # Lab code (Lab0)
 ├── HOST_setup/linux/       
 ├── docker/                  # Entrypoint script
 ├── Dockerfile

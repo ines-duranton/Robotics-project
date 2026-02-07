@@ -5,9 +5,9 @@ import rclpy
 from rclpy.node import Node
 import numpy as np
 
-from ece346.Lab1.scripts.controller.utils.generate_pwm import GeneratePwm
-from ece346.Lab1.scripts.controller.utils.realtime_buffer import RealtimeBuffer
-from ece346.Lab1.scripts.controller.utils.state_2d import State2D
+from ece346.Lab0.scripts.controller.utils.generate_pwm import GeneratePwm
+from ece346.Lab0.scripts.controller.utils.realtime_buffer import RealtimeBuffer
+from ece346.Lab0.scripts.controller.utils.state_2d import State2D
 
 from racecar_msgs.msg import ServoMsg
 from nav_msgs.msg import Odometry

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 import rclpy
 from std_msgs.msg import String
-from ece346.Lab1.scripts.controller.pure_pursuit import PurePursuitController
+from ece346.Lab0.scripts.controller.pure_pursuit import PurePursuitController
 from rclpy.executors import ExternalShutdownException
 
 def main(args = None):
     rclpy.init(args=args)
 
-    lab1_node = PurePursuitController()
-    lab1_node.get_logger().info("Started simulator Node")
+    lab0_node = PurePursuitController()
+    lab0_node.get_logger().info("Started simulator Node")
 
     try:    
-        rclpy.spin(lab1_node)
+        rclpy.spin(lab0_node)
     except KeyboardInterrupt:
         pass
     except ExternalShutdownException: #context shutdown from outside, ros2 launch
@@ -23,7 +23,7 @@ def main(args = None):
         else:
             raise
     finally:
-        lab1_node.destroy_node()
+        lab0_node.destroy_node()
         if rclpy.ok():
             rclpy.shutdown()
 
