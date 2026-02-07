@@ -213,12 +213,6 @@ class PurePursuitController(Node):
         # 3. Set the throttle and steering angle to the servo message
         # 4. Publish the servo message
         
-        servo_msg = ServoMsg()
-        time =  self.get_clock().now().to_msg()
-        servo_msg.header.stamp = time
-        servo_msg.throttle = throttle
-        servo_msg.steer = steer
-        self.control_pub.publish(servo_msg)
         ########################### END OF TODO 4 #################################
 
     def planning_thread(self):
@@ -270,8 +264,8 @@ class PurePursuitController(Node):
                     # 5. clip the steering angle between "-self.steer_max" and "self.steer_max"
                     # 6. apply the simple proportional controller for the acceleration to track the reference_velocity
                     
-                    accel = 0 # TO BE FILLED
-                    steer = 0 # TO BE FILLED
+                    accel = 0.0 # TO BE FILLED
+                    steer = 0.0 # TO BE FILLED
                     ########################### END OF TODO 5 ###########################################
                     
                     # publish the control
