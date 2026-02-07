@@ -19,7 +19,7 @@ The following are the objectives of this lab:
 
 ## Setting Up ROS 2
 
-Before we get started, you need to set up the Git Repository and configure your computer for the lab. Please read through the detailed instructions in the [main repository README](https://github.com/SafeRoboticsLab/ECE346) TODO.
+Before we get started, you need to set up the Git Repository and configure your computer for the lab. Please read through the detailed instructions in the [main repository README](https://github.com/SafeRoboticsLab/ECE346).
 
 # Intro to ROS 2
 
@@ -85,7 +85,7 @@ For now, we do not need to worry about `package.xml` and `CMakeLists.txt` as the
 
 ## Building a ROS 2 Package
 
-You should have already set up your Docker environment following the [main repository README](https://github.com/SafeRoboticsLab/ECE346) TODO. If not, follow those instructions first.
+You should have already set up your Docker environment following the [main repository README](https://github.com/SafeRoboticsLab/ECE346). If not, follow those instructions first.
 
 Let's build the code in our workspace. Inside the Docker container:
 
