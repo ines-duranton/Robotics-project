@@ -11,6 +11,8 @@ ECE346 ROS 2 Foxy development environment running in Docker.
 
 ### 1. Install Docker
 
+[Docker](https://www.docker.com/) packages software into **containers** — lightweight, isolated environments that include everything needed to run an application (OS, libraries, dependencies). We use Docker so that everyone runs the exact same ROS 2 Foxy environment regardless of what Ubuntu version is on your laptop. Think of it as a virtual machine, but faster and lighter.
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg
@@ -28,14 +30,28 @@ sudo usermod -aG docker $USER
 newgrp docker
 ```
 
+The last two commands add your user to the `docker` group so you can run Docker without `sudo`. If you still get "permission denied" errors when running `docker` commands, log out and back in (or reboot).
+
+**What is `sudo`?** `sudo` runs a command with administrator (root) privileges. Installing software requires root access, which is why the install commands above use `sudo`. After setup, you should be able to run `docker` commands *without* `sudo` thanks to the `usermod` step. If a `docker` command fails with "permission denied", try prefixing it with `sudo`.
+
 Verify: `docker --version`
 
-### 2. Install NVIDIA Container Toolkit
+### 2. Install NVIDIA Container Toolkit (Optional)
 
-Most lab machines have NVIDIA GPUs. If you have AMD/Intel, skip this step.
+This step allows Docker to access your NVIDIA GPU for GPU-accelerated compute. **If you have AMD/Intel, or if this step fails, skip it and move on** — the simulation and rviz2 will still work fine without it.
 
+First, check if you have NVIDIA drivers installed:
 ```bash
-# Add NVIDIA container toolkit repo
+nvidia-smi
+```
+If this command fails, you need to install NVIDIA drivers first:
+```bash
+sudo apt install nvidia-driver-535
+sudo reboot
+```
+
+Once `nvidia-smi` shows your GPU, install the toolkit:
+```bash
 curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
@@ -47,7 +63,7 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 ```
 
-Verify: `nvidia-smi` should show your GPU.
+**If any of the above fails, don't worry — just move on to step 3.** This step is not required for the labs.
 
 ### 3. Create a private fork
 
@@ -84,13 +100,28 @@ Verify: `nvidia-smi` should show your GPU.
     git config --global user.name "Your Name"
     ```
 
-9. Push the `SP2026` branch to your private repository, which has now become a private fork of `ECE346`.
+9. Set up Git authentication (choose one):
+
+    **Option A — Personal Access Token (easiest):**
+    - Go to [GitHub > Settings > Developer Settings > Personal Access Tokens > Tokens (classic)](https://github.com/settings/tokens)
+    - Click **Generate new token (classic)**, give it a name, select the `repo` scope, and click **Generate token**
+    - Copy the token — you'll use it as your password when pushing
+    - To save it so you only enter it once:
+      ```bash
+      git config --global credential.helper store
+      ```
+
+    **Option B — SSH Keys**
+    - Follow [GitHub's SSH key guide](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) to generate a key and add it to your GitHub account
+    - In step 7, use the SSH URL instead: `git@github.com:YOUR_USERNAME/ECE346_GroupXX.git`
+
+10. Push the `SP2026` branch to your private repository, which has now become a private fork of `ECE346`.
     ```bash
     git push -u origin SP2026
     ```
-    If your terminal says "The authenticity of host 'github.com'... continue connecting?" type "yes".
+    If prompted for a password, paste your access token from step 9.
 
-10. Add all course AIs as [collaborators](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-access-to-your-personal-repositories/inviting-collaborators-to-a-personal-repository) to your private fork: navigate to your private repository's **Settings** > **Collaborators and Teams** under **Access** > **Add People** > CalvinTAVN
+11. Add all course AIs as [collaborators](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-personal-account-on-github/managing-access-to-your-personal-repositories/inviting-collaborators-to-a-personal-repository) to your private fork: navigate to your private repository's **Settings** > **Collaborators and Teams** under **Access** > **Add People** > CalvinTAVN
 
 ### 4. Build the Docker image
 
@@ -116,7 +147,23 @@ colcon build --symlink-install
 source install/setup.bash
 ```
 
-From here, go to the individual lab README in `src/racecar_ece346/ece346/` for lab-specific instructions.
+### Common Docker commands
+
+```bash
+# Start the container and open a shell
+./start.sh
+
+# Open another terminal into the same running container
+sudo docker compose exec ros bash
+
+# Stop the container
+./start.sh down
+
+# Rebuild the Docker image (only needed if Dockerfile or requirements.txt changed)
+./start.sh build
+```
+
+## From here, go to the individual lab README in `src/racecar_ece346/ece346/` for lab-specific instructions.
 
 ---
 
