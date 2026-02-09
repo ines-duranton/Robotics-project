@@ -422,5 +422,8 @@ Open your `pure_pursuit.py` file. You will finish the function `planning_thread`
 
 You can also tune the controller at runtime using **Dynamic Reconfigure** in RQT (**Plugins > Configuration > Dynamic Reconfigure**). Try adjusting `max_vel` and `throttle_gain` to see how they affect behavior.
 
-# Intro to Trucks
-Details on the mini truck platform and on-hardware deployment will be released on Monday.
+**Once you are finished, push your code and show your working simulation to a TA during Lab Hours.**
+
+# Sneak Peek: What's Next
+
+In the upcoming labs, you will move beyond simulation and deploy your algorithms on **1/10-scale autonomous trucks**.
