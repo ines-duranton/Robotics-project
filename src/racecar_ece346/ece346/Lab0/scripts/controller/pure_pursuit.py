@@ -132,7 +132,7 @@ class PurePursuitController(Node):
         #   - subscribes to the topic <self.control_topic>
         #   - has message type <ServoMsg> (racecar_msgs.msg.Odometry) 
         #   - with queue size 1
-        self.control_pub = None # TO BE FILLED
+        self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1) # TO BE FILLED
         ########################### END OF TODO 1#################################
         
             
@@ -149,7 +149,7 @@ class PurePursuitController(Node):
         #   - has message type <Odometry> (nav_msgs.msg.Odometry) 
         #   - with callback function <self.odometry_callback>, which has already been implemented
         #   - with queue size 1
-        self.pose_sub = None # TO BE FILLED
+        self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 1) # TO BE FILLED
         ########################### END OF TODO 2#################################
         
     def odometry_callback(self, odom_msg: Odometry):
@@ -180,8 +180,10 @@ class PurePursuitController(Node):
         #   and create a 3-dim numpy array [x,y,1]
         # 3. add the goal to the buffer (self.goal_buffer)
         
-        goal_x = np.nan # TO BE FILLED
-        goal_y = np.nan # TO BE FILLED
+        goal_x = goal_msg.pose.position.x # TO BE FILLED
+        goal_y = goal_msg.pose.position.y # TO BE FILLED
+        goal_array = np.array([goal_x, goal_y, 1])
+        self.goal_buffer.writeFromNonRT(goal_array)
         
         ########################### END OF TODO 3 #################################
         # Log the goal to the console using "self.get_logger().info()"
@@ -213,6 +215,11 @@ class PurePursuitController(Node):
         #   Hint: self.get_clock().now().to_msg()
         # 3. Set the throttle and steering angle to the servo message
         #   Hint: throttle and steer must be Python floats, use float() to cast
+        msg = ServoMsg()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.throttle = float(throttle)
+        msg.steer = float(steer)
+        self.control_pub.publish(msg)
         
         ########################### END OF TODO 4 #################################
 
@@ -264,9 +271,21 @@ class PurePursuitController(Node):
                     #
                     # 5. clip the steering angle between "-self.steer_max" and "self.steer_max"
                     # 6. apply the simple proportional controller for the acceleration to track the reference_velocity
-                    
-                    accel = 0.0 # TO BE FILLED
-                    steer = 0.0 # TO BE FILLED
+                    if dis2goal < self.stop_distance:
+                        accel = -1.0
+                        steer = 0.0
+                        self.publish_control(accel, steer, state_cur)
+                        continue
+                    elif alpha > np.pi/2 or alpha < - np.pi/2 :
+                        steer = self.max_steer
+                        reference_velocity = self.max_vel
+                    else :
+                        l_d = min(self.ld_max, dis2goal)
+                        steer = np.arctan(2*self.wheel_base*np.sin(alpha)/ l_d)
+                        reference_velocity = min(self.max_vel, (dis2goal-self.stop_distance))
+                    steer = np.clip(steer, -self.max_steer, self.max_steer)
+                    accel = self.throttle_gain*(reference_velocity-vel_cur)
+                        
                     ########################### END OF TODO 5 ###########################################
                     
                     # publish the control
