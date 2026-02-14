@@ -6,7 +6,11 @@ This lab will focus on the fundamental robot trajectory planning problem using o
 
 There are **4 tasks** in this lab, and you will need to submit (push) your code and demo to a TA.
 
-**Note**: Make sure you have **pulled the code from upstream** into your repository and rebuilt the Docker image:
+**Note**: Make sure you have **pulled the code from upstream** into your repository and rebuilt the Docker image. If git asks you to specify how to reconcile divergent branches, run this once:
+```bash
+git config pull.rebase false
+```
+Then pull and rebuild:
 ```bash
 git pull upstream SP2026
 ./start.sh build
