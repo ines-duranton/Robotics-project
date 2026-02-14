@@ -144,6 +144,8 @@ class ILQR():
 		'''
 		calculate backward pass in iLQR
 		'''
+		#TODO 1b
+		
 		K_closed_loop = None
 		k_open_loop = None
 		last_reg = None
