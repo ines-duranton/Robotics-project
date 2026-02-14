@@ -16,6 +16,19 @@ git pull upstream SP2026
 ./start.sh build
 ```
 
+If you get a **merge conflict** on a file you modified (e.g. `pure_pursuit.py`), you can resolve it by keeping your version:
+```bash
+git checkout --ours <path-to-conflicting-file>
+git add <path-to-conflicting-file>
+git commit
+```
+For example:
+```bash
+git checkout --ours src/racecar_ece346/ece346/Lab0/scripts/controller/pure_pursuit.py
+git add src/racecar_ece346/ece346/Lab0/scripts/controller/pure_pursuit.py
+git commit
+```
+
 Then start the container and build the ROS 2 workspace:
 ```bash
 ./start.sh
