@@ -155,6 +155,3 @@ ros2 launch racecar_ece346 lab1_simulation_launch.py
 ```
 
 After seeing `ILQR warm up finished` on your terminal, you can choose any point on the map, using **2D Nav Goal** on your RViz, and verify your receding horizon planner. Think about the advantages and disadvantages of the policy planner in task 2 and the receding horizon planner in this task. **Be prepared to show and explain the receing horizon planner to a TA**.
-
-# Testing Your Planner on Mini Truck
-To be determined by Monday, February 16th. 
