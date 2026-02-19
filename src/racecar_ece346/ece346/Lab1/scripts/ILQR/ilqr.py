@@ -140,15 +140,51 @@ class ILQR():
 		obs_refs = self.collision_checker.check_collisions(trajectory, self.obstacle_list)
 		return path_refs, obs_refs
 
-	def backward_pass(self, trajectory, controls, path_refs, obs_refs):
+	def backward_pass(self, trajectory, controls, path_refs, obs_refs, regular):
 		'''
 		calculate backward pass in iLQR
 		'''
 		#TODO 1b
-		
-		K_closed_loop = None
-		k_open_loop = None
-		last_reg = None
+		q, r, Q, R, H = self.cost.get_derivatives_np(trajectory, controls, path_refs, obs_refs)
+		A, B = self.dyn.get_jacobian_np(trajectory, controls)
+
+		p = q[:, self.T-1] 
+		P = Q[:, :, self.T-1]   
+
+		reg = regular
+
+		K_closed_loop = np.zeros((self.dim_u, self.dim_x, self.T))
+		k_open_loop = np.zeros((self.dim_u ,self.T))
+
+		t = self.T - 2 
+
+		while t >= 0:
+			Qxt = q[:, t] + A[:, :, t].T @ p
+			Qut = r[:, t] + B[:, :, t].T @ p   
+			Qxxt = Q[:, :, t] + A[:, :, t].T @ P @ A[:, :, t]
+			Quut = R[:, :, t] + B[:, :, t].T @ P @ B[:, :, t]
+			Quxt = H[:, :, t] + B[:, :, t].T @ P @ A[:, :, t]
+
+			QuutR = R[:, :, t] + B[:, :, t].T @ (P + reg * np.identity(self.dim_x)) @ B[:, :, t]
+			QuxtR = H[:, :, t] + B[:, :, t].T @ (P + reg * np.identity(self.dim_x)) @ A[:, :, t]
+
+			eigenvals = np.linalg.eigvals(QuutR)
+			if np.min(eigenvals) <= 0 :
+				reg = min(reg * self.reg_scale_up, self.reg_max)
+				t = self.T - 2
+				p = q[:, self.T-1]  
+				P = Q[:, :, self.T-1]
+				continue 
+			
+			K_closed_loop[:, :, t] = -np.linalg.inv(QuutR) @ QuxtR
+			k_open_loop[:, t] = -np.linalg.inv(QuutR) @ Qut
+
+			p = Qxt + K_closed_loop[:, :, t].T @ Qut + K_closed_loop[:, :, t].T @ Quut @ k_open_loop[ :, t] + Quxt.T @ k_open_loop[:, t]
+			P = Qxxt + K_closed_loop[:, :, t].T @ Quut @ K_closed_loop[:, :, t] + K_closed_loop[:, :, t].T @ Quxt + Quxt.T @ K_closed_loop[:, :, t]
+
+			t = t - 1
+			#reg = reg / self.reg_scale_down
+		last_reg = max(self.reg_min, reg/self.reg_scale_down) 
 	
 		return K_closed_loop, k_open_loop, last_reg
 
@@ -158,8 +194,18 @@ class ILQR():
 		# Note: make sure that the difference in heading is between [-pi, pi]
         # but make sure that the angle is still preserved (e.g. do something
         # with np.mod() to make sure x_diff[3] is in the right range)
-		state = None
-		control = None
+		state = np.zeros((self.dim_x, self.T))
+		control = np.zeros((self.dim_u, self.T))
+
+		state[:,0 ] = x_bar[:, 0]
+
+
+		for t in range(self.T - 1):
+			x_diff = state[:, t] - x_bar[:, t]   #added this and the line after to take into account the comment
+			x_diff[3] = np.arctan2(np.sin(x_diff[3]), np.cos(x_diff[3]))    #np.mod(x_diff[3], 2*np.pi) - np.pi
+			control[:, t] = u_bar[:, t] + K_closed_loop[:,:, t] @ (x_diff) + alpha*k_open_loop[:, t]
+			state[:, t+1], control[:, t] = self.dyn.integrate_forward_np(state[:, t], control[:, t])
+
 		return state, control
 
 	def plan(self, init_state: np.ndarray,
@@ -265,15 +311,42 @@ class ILQR():
         #   H: np.ndarray, (dim_x, dim_u, T) hessian of cost function w.r.t. states and controls
 		
 		########################### #END of TODO 1 #####################################
+		
+		converge = False
+		reg = self.reg_init
+		for i in range(self.max_iter):
+			K, k, reg = self.backward_pass(trajectory, controls, path_refs, obs_refs, reg)
+			
+			for alpha in self.alphas:
+				new_trajectory, new_controls = self.forward_pass(trajectory, controls, K, k, alpha)
+				new_path_refs , new_obs_refs = self.get_references(new_trajectory)
+				changed = False
+				J2 = self.cost.get_traj_cost(new_trajectory, new_controls, new_path_refs, new_obs_refs)
+				if J2 < J:
+					if np.abs(J2-J)< self.tol : 
+						converge = True
+					J = J2
+					trajectory = new_trajectory
+					controls = new_controls
+					path_refs = new_path_refs
+					obs_refs = new_obs_refs
+					changed = True
+					break
+			if not changed:
+				status = 1.0
+				break
+			if converge == True :
+				status = 0.0
+				break			
 
 		t_process = time.time() - t_start
 		solver_info = dict(
 				t_process=t_process, # Time spent on planning
 				trajectory = trajectory,
 				controls = controls,
-				status= None, #	TODO: Fill this in
-				K_closed_loop= None, # TODO: Fill this in
-				k_open_loop= None # TODO: Fill this in
+				status= status, #	TODO: Fill this in
+				K_closed_loop= K, # TODO: Fill this in
+				k_open_loop= k # TODO: Fill this in
 				# Optional TODO: Fill in other information you want to return
 		)
 		return solver_info
