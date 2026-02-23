@@ -30,7 +30,9 @@ ament_python_install_package(ece346)
 # Optional: Python executables
 install(PROGRAMS
   ece346/Lab0/scripts/lab0_node.py
+  ece346/lab0_truck/scripts/lab0_truck_node.py
   ece346/Lab1/scripts/traj_planning_node.py
+  ece346/lab1_truck/scripts/lab1_truck_planning_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -39,14 +41,18 @@ install(PROGRAMS
 #config files
 install(DIRECTORY
   ece346/Lab0/config
+  ece346/lab0_truck/config
   ece346/Lab1/config
+  ece346/lab1_truck/config
   DESTINATION share/${PROJECT_NAME}
 )
 
 #launch
 install(DIRECTORY
   ece346/Lab0/launch
+  ece346/lab0_truck/launch
   ece346/Lab1/launch
+  ece346/lab1_truck/launch
   DESTINATION share/${PROJECT_NAME}
 )
 

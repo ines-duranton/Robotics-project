@@ -1,0 +1,28 @@
+traj_planning_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    control_topic: /control
+    obstacle_topic: /obstacles
+    traj_topic: /Planning/Trajectory
+    routing_path_topic: /Routing/Path
+    package_path: ece346/lab1_truck
+    simulation: False
+    receding_horizon: True
+    replan_dt: 0.1
+    truck_latency: 0.05
+
+routing_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: /Routing/Path
+    routing_pathL_topic: /Routing/PathL
+    routing_pathR_topic: /Routing/PathR
+    goal_topic: /goal_pose
+
+visualization_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    dyn_obs_topic: Obstacles/Dynamic
