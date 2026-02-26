@@ -41,6 +41,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-rosidl-default-generators \
     ros-foxy-rosidl-default-runtime \
     ros-foxy-builtin-interfaces \
+    ros-foxy-ackermann-msgs \
+    ros-foxy-rmw-cyclonedds-cpp \
     # Lanelet2
     ros-foxy-lanelet2 \
     # X11 / GUI support

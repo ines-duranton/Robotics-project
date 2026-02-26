@@ -1,0 +1,29 @@
+pure_pursuit_controller_node:
+  ros__parameters:
+    max_throttle: 0.5
+    min_throttle: -0.35
+    odom_topic: /SLAM/Pose
+    control_topic: /control
+    throttle_gain: 0.10
+    ld_max: 2
+    max_steer: 0.26
+    max_vel: 0.2
+    stop_distance: 0.5
+    wheel_base: 0.324
+    simulation: False
+
+routing_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: Routing/Path
+    routing_pathL_topic: Routing/PathL
+    routing_pathR_topic: Routing/PathR
+    goal_topic: /goal_pose
+
+visualization_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    dyn_obs_topic: Obstacles/Dynamic
