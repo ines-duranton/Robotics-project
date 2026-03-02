@@ -1,0 +1,60 @@
+traj_planning_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    control_topic: /control
+    obstacle_topic: /obstacles
+    traj_topic: /Planning/Trajectory
+    routing_path_topic: /Routing/Path 
+    package_path: ece346/Lab2
+    simulation: True
+    receding_horizon: True
+    replan_dt: 0.1
+
+traffic_simulation_node:
+  ros__parameters:
+    ~num_dyn_obs: 2
+    ~num_static_obs: 2
+    ~static_obs_size: 0.2
+    static_obs_topic: '/Obstacles/Static'
+    dyn_obs_topic: '/Obstacles/Dynamic'
+    pub_rate: 30
+    static_obs_location: ''
+    reset_obstacle_service: '/simulation/reset_static_obstacles'
+
+simulator_node:
+  ros__parameters:
+    control_topic: /control
+    odom_topic: /slam_pose
+    pub_rate: 30
+    init_x: 2.0
+    init_y: 0.5
+    init_yaw: 0.0
+    reset_service: /simulation/reset
+
+routing_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: /Routing/Path
+    routing_pathL_topic: /Routing/PathL
+    routing_pathR_topic: /Routing/PathR
+    goal_topic: /goal_pose
+    #map_file: maps/track.osm
+
+visualization_node:
+  ros__parameters:
+    odom_topic: /slam_pose
+    dyn_obs_topic: /Obstacles/Dynamic
+
+
+dynamic_obstacle_node:
+  ros__parameters:
+    dyn_obs_topic: /Obstacles/Dynamic
+    K_vx: 0.0
+    K_vy: 0.0
+    K_y: 0.0
+    dx: 0.0
+    dy: 0.0
+    allow_lane_change: false
