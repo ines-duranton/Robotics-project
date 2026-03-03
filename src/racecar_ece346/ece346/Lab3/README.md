@@ -1,4 +1,4 @@
-# Lab 2 - Collision Avoidance and Navigation in Dynamic Environments
+# Lab 3 - Collision Avoidance and Navigation in Dynamic Environments
 
 **[Due 11:59PM Friday, March 20]**
 
@@ -32,25 +32,25 @@ cd /ros2_ws && colcon build --symlink-install && source install/setup.bash
 
 ## Before You Start
 
-This lab builds directly on your Lab 1 ILQR implementation. You will need to **fill in the ILQR planner** and **Trajectory Planner** code in the Lab 2 directory. The Lab 2 codebase is a copy of Lab 1's structure with additional functionality for obstacle avoidance. Specifically, you must complete:
+This lab builds directly on your Lab 1 ILQR implementation. You will need to **fill in the ILQR planner** and **Trajectory Planner** code in the Lab 3 directory. The Lab 3 codebase is a copy of Lab 1's structure with additional functionality for obstacle avoidance. Specifically, you must complete:
 
-1. **ILQR `plan` function** in [`ece346/Lab2/scripts/ILQR/ilqr.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/ILQR/ilqr.py) -- Port your working ILQR implementation from Lab 1 into the `TODO 1` section.
+1. **ILQR `plan` function** in [`ece346/Lab3/scripts/ILQR/ilqr.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/ILQR/ilqr.py) -- Port your working ILQR implementation from Lab 1 into the `TODO 1` section.
 
-2. **`compute_control` function** in [`ece346/Lab2/scripts/traj_planner.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/traj_planner.py) -- Port your feedback control implementation from Lab 1 into `TODO: Task 2`.
+2. **`compute_control` function** in [`ece346/Lab3/scripts/traj_planner.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/traj_planner.py) -- Port your feedback control implementation from Lab 1 into `TODO: Task 2`.
 
-3. **`receding_horizon_planning_thread` function** in [`ece346/Lab2/scripts/traj_planner.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/traj_planner.py) -- Port your receding horizon planner from Lab 1 into `TODO: Task 3`.
+3. **`receding_horizon_planning_thread` function** in [`ece346/Lab3/scripts/traj_planner.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/traj_planner.py) -- Port your receding horizon planner from Lab 1 into `TODO: Task 3`.
 
-Make sure your Lab 1 code works before starting Lab 2. Once you have ported your code, you can proceed with the tasks below.
+Make sure your Lab 1 code works before starting Lab 3. Once you have ported your code, you can proceed with the tasks below.
 
 ## Software Structure
 
 In this lab, a new node called `/traffic_simulation_node` is introduced in your workspace. This node (**Figure 1**) simulates static and dynamic obstacles and publishes them under the topics `/Obstacles/Static` and `/Obstacles/Dynamic`. Your trajectory planner will leverage these messages and pass them into ILQR for collision-free planning.
 
-![`/traffic_simulation_node` is added to ROS workspace in Lab 2 and it publishes `/Obstacles/Static` and `/Obstacles/Dynamic` topics](assets/traffic_simulation_node_graph.png)
+![`/traffic_simulation_node` is added to ROS workspace in Lab 3 and it publishes `/Obstacles/Static` and `/Obstacles/Dynamic` topics](assets/traffic_simulation_node_graph.png)
 
-***Figure 1**: `/traffic_simulation_node` is added to the ROS workspace in Lab 2 and it publishes the `/Obstacles/Static` and `/Obstacles/Dynamic` topics*
+***Figure 1**: `/traffic_simulation_node` is added to the ROS workspace in Lab 3 and it publishes the `/Obstacles/Static` and `/Obstacles/Dynamic` topics*
 
-The configuration file for this lab is located at `ece346/Lab2/config/lab2_launch.yaml`.
+The configuration file for this lab is located at `ece346/Lab3/config/lab3_launch.yaml`.
 
 # Static Obstacles
 
@@ -59,8 +59,11 @@ In the first part of this lab, we will build collision avoidance functionality o
 # Inside the Docker container:
 cd /ros2_ws && colcon build --symlink-install && source install/setup.bash
 
+# Set your ROS domain ID (replace <YOUR_ID> with your assigned number)
+export ROS_DOMAIN_ID=<YOUR_ID>
+
 # Launch simulation nodes
-ros2 launch racecar_ece346 Lab2_simulation_launch.py
+ros2 launch racecar_ece346 Lab3_simulation_launch.py
 ```
 
 This will launch a simulation environment (**Figure 2**) with static obstacles (blue squares) and a dynamic obstacle.
@@ -71,11 +74,11 @@ This will launch a simulation environment (**Figure 2**) with static obstacles (
 
 ## Task 1: Collision Avoidance with Static Obstacles
 
-Recall that in Lab 1, you implemented a receding horizon planner inside the [`TrajectoryPlanner`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/traj_planner.py) class. We will now add the following features to this class:
+Recall that in Lab 1, you implemented a receding horizon planner inside the [`TrajectoryPlanner`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/traj_planner.py) class. We will now add the following features to this class:
 
 ### Adding the subscriber for static obstacles
 
-1. Within your [`TrajectoryPlanner`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/traj_planner.py) class, read the **topic name** of static obstacles from the ROS 2 parameter `static_obstacles_topic` using `self.get_parameter()` and setting the default parameter as `/Obstacles/Static`.
+1. Within your [`TrajectoryPlanner`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/traj_planner.py) class, read the **topic name** of static obstacles from the ROS 2 parameter `static_obstacles_topic` using `self.get_parameter()` and setting the default parameter as `/Obstacles/Static`.
 
 2. Subscribe to the topic from step 1, with message type [`MarkerArray`](https://docs.ros2.org/foxy/api/visualization_msgs/msg/MarkerArray.html). This message contains a list of obstacles represented by a marker.
 
@@ -85,13 +88,13 @@ Recall that in Lab 1, you implemented a receding horizon planner inside the [`Tr
 
 3. Initialize an empty **dictionary** (let's call it `static_obstacle_dict`) as a class variable, i.e., a variable that is shared by all instances of a class (in this case, it is your `TrajectoryPlanner`).
 
-4. Create a callback function for the subscriber. Inside this callback function, retrieve **id** and **vertices** for each obstacle using the [`get_obstacle_vertices`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/utils/static_obstacle.py) helper function. Then, **add vertices to `static_obstacle_dict` whose key is the id of the obstacle**.
+4. Create a callback function for the subscriber. Inside this callback function, retrieve **id** and **vertices** for each obstacle using the [`get_obstacle_vertices`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/utils/static_obstacle.py) helper function. Then, **add vertices to `static_obstacle_dict` whose key is the id of the obstacle**.
 
 5. **(Optional)** Feel free to implement any reset strategies for the dictionary inside your callback function. For example, you can clear the dictionary every time the callback function is called or clear it every few seconds.
 
 ### Passing static obstacles into ILQR
 
-Inside the [`receding_horizon_planning_thread`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/traj_planner.py) function:
+Inside the [`receding_horizon_planning_thread`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/traj_planner.py) function:
 
 1. At each time before replanning, initialize an empty list (let's call it `obstacles_list`).
 2. Append all **values** from `self.static_obstacle_dict` into `obstacles_list`.
@@ -117,11 +120,11 @@ In addition to static obstacles, we must consider other agents as dynamic obstac
 
 ## Task 2: Multi-step Forward Reachable Set
 
-Inside the file [`ece346/Lab2/scripts/frs.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/frs.py), we have implemented the majority of functionalities to compute FRS in the `FRS` class. For example, given a set, $A$ and $B$ matrices to represent dynamics, bounds of control/disturbance, and time step $d_t$, the `onestep_zonotope_reachset` function will calculate the FRS after $d_t$ seconds.
+Inside the file [`ece346/Lab3/scripts/frs.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/frs.py), we have implemented the majority of functionalities to compute FRS in the `FRS` class. For example, given a set, $A$ and $B$ matrices to represent dynamics, bounds of control/disturbance, and time step $d_t$, the `onestep_zonotope_reachset` function will calculate the FRS after $d_t$ seconds.
 
 Your task is to finish the `multistep_zonotope_reachset` function in the `FRS` class following the instructions in the code. This function will calculate multiple-step reachable sets given an initial set.
 
-You can use [`ece346/Lab2/scripts/task2.ipynb`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/task2.ipynb) to reproduce **Figure 4** and test your FRS implementation.
+You can use [`ece346/Lab3/scripts/task2.ipynb`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/task2.ipynb) to reproduce **Figure 4** and test your FRS implementation.
 
 ![20 Steps forward reachable sets with predictive policy projected to x-y plane](assets/FRS.png)
 
@@ -133,7 +136,7 @@ Follow the same steps as Lab 1:
 
 1. Make sure your Docker container is running (via `./start.sh`).
 2. Attach VS Code to the running container using **Dev Containers: Attach to Running Container**.
-3. In the new VS Code window, navigate to `/ros2_ws/src/racecar_ece346/ece346/Lab2/scripts/`.
+3. In the new VS Code window, navigate to `/ros2_ws/src/racecar_ece346/ece346/Lab3/scripts/`.
 4. Open `task2.ipynb` and select the **Python 3.8** kernel.
 
 ## Task 3: Collision Avoidance with Dynamic Obstacles
@@ -142,7 +145,7 @@ Follow the same steps as Lab 1:
 
 ***Figure 5**: Example result of Task 3*
 
-In Task 3, we integrate the FRS computation with the trajectory planner. A dynamic obstacle node ([`ece346/Lab2/scripts/dyn_obs_node.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/dyn_obs_node.py)) and an FRS service client have already been set up in your `TrajectoryPlanner`. Inside your `receding_horizon_planning_thread`, you will need to:
+In Task 3, we integrate the FRS computation with the trajectory planner. A dynamic obstacle node ([`ece346/Lab3/scripts/dyn_obs_node.py`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/dyn_obs_node.py)) and an FRS service client have already been set up in your `TrajectoryPlanner`. Inside your `receding_horizon_planning_thread`, you will need to:
 
 1. Call the FRS service client to obtain other agents' FRSs. You can use the helper function `self.get_frs()`:
 
@@ -151,11 +154,11 @@ request = t_cur + np.arange(self.planner.T) * self.planner.dt
 response = self.get_frs(request)
 ```
 
-2. Process the response using the helper function [`frs_to_obstacle`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/utils/dyn_obstacle.py). The output should be **extended** into your `obstacles_list` (the same list from Task 1) before sending it to the ILQR planner.
+2. Process the response using the helper function [`frs_to_obstacle`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/utils/dyn_obstacle.py). The output should be **extended** into your `obstacles_list` (the same list from Task 1) before sending it to the ILQR planner.
 
     **Hint**: See [append() and extend() in Python](https://www.geeksforgeeks.org/append-extend-python/) to learn the difference.
 
-3. Use the helper function [`frs_to_msg`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab2/scripts/utils/dyn_obstacle.py) to generate visualization messages of FRSs. Publish the message with `self.frs_pub`.
+3. Use the helper function [`frs_to_msg`](https://github.com/SafeRoboticsLab/ECE346/blob/SP2026/src/racecar_ece346/ece346/Lab3/scripts/utils/dyn_obstacle.py) to generate visualization messages of FRSs. Publish the message with `self.frs_pub`.
 
     **Note**: To visualize the FRS in RViz, you need to manually add the topic. In the bottom-left panel of RViz, click **Add**, then select **By topic** and add the `/vis/FRS` `MarkerArray` topic.
 
@@ -164,8 +167,11 @@ Finally, test your collision avoidance by launching the simulation:
 # Inside the Docker container:
 cd /ros2_ws && colcon build --symlink-install && source install/setup.bash
 
+# Set your ROS domain ID (replace <YOUR_ID> with your assigned number)
+export ROS_DOMAIN_ID=<YOUR_ID>
+
 # Launch simulation nodes
-ros2 launch racecar_ece346 Lab2_simulation_launch.py
+ros2 launch racecar_ece346 Lab3_simulation_launch.py
 ```
 
 If everything works properly, you will see your robot moving around the track and avoiding collisions with other agents.

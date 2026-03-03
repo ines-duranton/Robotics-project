@@ -8,7 +8,7 @@ from rcl_interfaces.msg import SetParametersResult
 
 import numpy as np
 
-from ece346.Lab2.scripts.frs import FRS
+from ece346.Lab3.scripts.frs import FRS
 from racecar_msgs.msg import OdometryArray, SetArray
 from geometry_msgs.msg import Polygon, Point32
 from racecar_ece346.srv import GetFRS

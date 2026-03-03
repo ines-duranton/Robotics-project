@@ -5,7 +5,7 @@ traj_planning_node:
     obstacle_topic: /obstacles
     traj_topic: /Planning/Trajectory
     routing_path_topic: /Routing/Path 
-    package_path: ece346/Lab2
+    package_path: ece346/Lab3
     simulation: True
     receding_horizon: True
     replan_dt: 0.1

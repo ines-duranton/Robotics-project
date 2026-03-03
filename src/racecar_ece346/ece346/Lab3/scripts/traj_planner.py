@@ -36,8 +36,8 @@ from rcl_interfaces.msg import SetParametersResult
 from .ILQR.config import Config
 
 from racecar_msgs.msg import OdometryArray
-from ece346.Lab2.scripts.utils.dyn_obstacle import frs_to_obstacle, frs_to_msg
-from ece346.Lab2.scripts.utils.static_obstacle import get_obstacle_vertices
+from ece346.Lab3.scripts.utils.dyn_obstacle import frs_to_obstacle, frs_to_msg
+from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
 from visualization_msgs.msg import MarkerArray
 from racecar_ece346.srv import GetFRS  
 
@@ -105,7 +105,7 @@ class TrajectoryPlanner(Node):
         self.declare_parameter('simulation', True)
         self.declare_parameter('receding_horizon', False)
         self.declare_parameter('replan_dt', 0.1)
-        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab2_ilqr.yaml"))
+        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab3_ilqr.yaml"))
         self.declare_parameter('PWM_model', os.path.join(self.package, "config", "mlp_model.sav"))
         self.declare_parameter('max_throttle', 0.5)
         self.declare_parameter('min_throttle', -0.35)

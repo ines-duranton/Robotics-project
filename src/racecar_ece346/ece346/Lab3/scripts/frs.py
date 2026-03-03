@@ -1,4 +1,4 @@
-from ece346.Lab2.scripts.quickzonoreach.zono import onestep_zonotope_reachset, zono_from_box
+from ece346.Lab3.scripts.quickzonoreach.zono import onestep_zonotope_reachset, zono_from_box
 import numpy as np
 import rclpy
 from nav_msgs.msg import Odometry

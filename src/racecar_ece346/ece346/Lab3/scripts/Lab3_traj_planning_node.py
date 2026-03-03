@@ -4,7 +4,7 @@ from rclpy.node import Node
 from interface.simulator.simulator import Simulator
 from rclpy.executors import ExternalShutdownException
 from std_msgs.msg import String
-from ece346.Lab2.scripts.traj_planner import TrajectoryPlanner
+from ece346.Lab3.scripts.traj_planner import TrajectoryPlanner
 
 def main(args = None):
     rclpy.init(args = args)

@@ -14,7 +14,7 @@ def generate_launch_description():
     default_params_file = PathJoinSubstitution([
         ece_346_share,
         'config',
-        'lab2_launch.yaml',
+        'lab3_launch.yaml',
     ])
 
     param_file = LaunchConfiguration('param_file')
@@ -22,7 +22,7 @@ def generate_launch_description():
     declare_params = DeclareLaunchArgument(
         'param_file',
         default_value=default_params_file,
-        description='YAML file for all Lab 2 Nodes',
+        description='YAML file for all Lab 3 Nodes',
     )
 
     # Traffic simulation launch
@@ -36,7 +36,7 @@ def generate_launch_description():
     # Trajectory planner node
     trajectory_planner_node = Node(
         package='racecar_ece346',
-        executable='Lab2_traj_planning_node.py',
+        executable='Lab3_traj_planning_node.py',
         name='traj_planning_node',
         output='screen',
         parameters=[param_file],
