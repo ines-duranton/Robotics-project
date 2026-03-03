@@ -439,6 +439,7 @@ class TrajectoryPlanner(Node):
                 ackermann_msg = AckermannDriveStamped()
                 ackermann_msg.header.stamp = control_time
                 speed_cmd = float(state_cur[2] + accel * 0.025) if state_cur is not None else 0.0  # v + a*dt at 40Hz
+                speed_cmd = np.clip(speed_cmd, self.planner.dyn.v_min, self.planner.dyn.v_max)
                 ackermann_msg.drive.speed = speed_cmd
                 ackermann_msg.drive.steering_angle = float(steer)
                 self.control_pub.publish(ackermann_msg)

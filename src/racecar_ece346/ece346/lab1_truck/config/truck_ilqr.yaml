@@ -46,8 +46,8 @@ delta_max: 0.31 # maximum steering angle (right)
 delta_min: -0.26 # minimum steering angle (left)
 
 # velocity limits
-v_max: 0.5 # maximum velocity
-v_min: -0.5 # minimum velocity
+v_max: 0.3 # maximum velocity
+v_min: -0.3 # minimum velocity
 
 # turn rate limits
 omega_min: -3.0 # minimum turn rate
@@ -58,7 +58,7 @@ a_max: 1.0 # maximum acceleration
 a_min: -1.0 # minimum acceleration
 
 # reference velocity
-v_ref: 0.4 # reference velocity
+v_ref: 0.2 # reference velocity
 ####################################################
 ########## Parameters for ILQR COST ################
 ####################################################
