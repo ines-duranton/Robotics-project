@@ -186,3 +186,11 @@ If everything works properly, you will see your robot moving around the track an
 1. Demo to a TA: robot successfully avoiding static obstacles and continuing its path
 2. Demo to a TA: robot successfully overtaking or avoiding a dynamic obstacle once
 3. Push your completed code to your repository
+
+---
+
+# Lab 1 Truck - Running ILQR on the Real Truck
+
+You must also complete the **Lab 1 Truck** assignment, which deploys your ILQR trajectory planner on the real truck hardware.
+
+Please refer to the [Lab 1 Truck README](../lab1_truck/README.md) for full instructions on setup, running, and demoing on the truck.
