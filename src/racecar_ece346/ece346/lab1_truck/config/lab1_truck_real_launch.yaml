@@ -9,7 +9,7 @@ traj_planning_node:
     simulation: False
     receding_horizon: True
     replan_dt: 0.1
-    truck_latency: 0.05
+    truck_latency: 0.2
 
 routing_node:
   ros__parameters:

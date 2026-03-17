@@ -7,7 +7,7 @@ pure_pursuit_controller_node:
     throttle_gain: 0.10
     ld_max: 2
     max_steer: 0.26
-    max_vel: 0.2
+    max_vel: 0.3
     stop_distance: 0.5
     wheel_base: 0.324
     simulation: False
