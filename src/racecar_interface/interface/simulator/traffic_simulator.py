@@ -263,7 +263,7 @@ class TrafficSimulator(Node):
             
     def gen_ref_path(self, pose):
         path = None
-        while path is None:
+        while path is None or len(path) == 0:
             goal = self.lanelet_wrapper.get_random_waypoint()
             path = self.lanelet_wrapper.get_shortest_path(pose, goal, True, True, False)
         v_ref = np.random.uniform(0, 1.0) 

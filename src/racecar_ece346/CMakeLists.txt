@@ -8,6 +8,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+find_package(rosidl_default_generators REQUIRED)
 #Packages needed from imports
 find_package(builtin_interfaces REQUIRED)
 
@@ -21,8 +22,11 @@ find_package(rcl_interfaces REQUIRED)
 #Packages that were created
 find_package(racecar_msgs REQUIRED)
 
-
-
+#there are interfaces in this package
+rosidl_generate_interfaces(${PROJECT_NAME}
+  "srv/GetFRS.srv"
+  DEPENDENCIES racecar_msgs
+)
 
 # --- Python package install ---
 ament_python_install_package(ece346)
@@ -33,6 +37,8 @@ install(PROGRAMS
   ece346/lab0_truck/scripts/lab0_truck_node.py
   ece346/Lab1/scripts/traj_planning_node.py
   ece346/lab1_truck/scripts/lab1_truck_planning_node.py
+  ece346/Lab3/scripts/Lab3_traj_planning_node.py
+  ece346/Lab3/scripts/dyn_obs_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -44,6 +50,7 @@ install(DIRECTORY
   ece346/lab0_truck/config
   ece346/Lab1/config
   ece346/lab1_truck/config
+  ece346/Lab3/config
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -53,8 +60,10 @@ install(DIRECTORY
   ece346/lab0_truck/launch
   ece346/Lab1/launch
   ece346/lab1_truck/launch
+  ece346/Lab3/launch
   DESTINATION share/${PROJECT_NAME}
 )
 
 
+ament_export_dependencies(rosidl_default_runtime)
 ament_package()

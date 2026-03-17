@@ -19,8 +19,6 @@ from rclpy.time import Time
 from rclpy.clock import Clock
 
 from racecar_msgs.msg import ServoMsg
-from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import Bool
 
 #for packages
 from ament_index_python.packages import get_package_share_directory
@@ -35,13 +33,13 @@ from std_srvs.srv import Empty
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
 from rcl_interfaces.msg import SetParametersResult
 
-from ece346.lab1_truck.scripts.ILQR.config import Config
+from .ILQR.config import Config
 
-# You will use the imports below for lab3   
-# from racecar_msgs.msg import OdometryArray
-# from utils import frs_to_obstacle, frs_to_msg, get_obstacle_vertices, get_ros_param
-# from visualization_msgs.msg import MarkerArray
-# from racecar_obs_detection.srv import GetFRS, GetFRSResponse
+from racecar_msgs.msg import OdometryArray
+from ece346.Lab3.scripts.utils.dyn_obstacle import frs_to_obstacle, frs_to_msg
+from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
+from visualization_msgs.msg import MarkerArray
+from racecar_ece346.srv import GetFRS  
 
 class TrajectoryPlanner(Node):
     '''
@@ -98,7 +96,7 @@ class TrajectoryPlanner(Node):
 
         self.declare_parameter('odom_topic', 'slam_pose')
         self.declare_parameter('control_topic', '/control')
-        self.declare_parameter('obstacles_topic', 'obstacles')
+        self.declare_parameter('static_obstacles_topic', '/Obstacles/Static')
         self.declare_parameter('traj_topic', '/Planning/Trajectory')
         self.declare_parameter('planning_start', '/Planning/Start')
         self.declare_parameter('planning_stop', '/Planning/Stop')
@@ -107,7 +105,7 @@ class TrajectoryPlanner(Node):
         self.declare_parameter('simulation', True)
         self.declare_parameter('receding_horizon', False)
         self.declare_parameter('replan_dt', 0.1)
-        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab2_ilqr.yaml"))
+        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab3_ilqr.yaml"))
         self.declare_parameter('PWM_model', os.path.join(self.package, "config", "mlp_model.sav"))
         self.declare_parameter('max_throttle', 0.5)
         self.declare_parameter('min_throttle', -0.35)
@@ -128,8 +126,6 @@ class TrajectoryPlanner(Node):
         # Read ROS topic names to publish
         self.control_topic = self.get_parameter('control_topic').value
         self.traj_topic = self.get_parameter('traj_topic').value
-        #Lab 3 Task 1.1 Comment if Lab 2
-        #self.static_obs_topic = self.get_parameter('obstacles_topic').value
         
         # Read the simulation flag, 
         # if the flag is true, we are in simulation 
@@ -161,14 +157,10 @@ class TrajectoryPlanner(Node):
         self.policy_buffer = RealtimeBuffer()
         self.path_buffer = RealtimeBuffer()
 
-        #Lab 3 Task 1.3 Comment if Lab 2
-        #self.static_obstacle_dict = {}
+
 
         # Indicate if the planner is ready to generate a new trajectory
         self.planner_ready = True
-
-        # Autonomous lock: only publish drive commands when R1 is held
-        self.autonomous_enabled = False
 
     def setup_publisher(self):
         '''
@@ -178,13 +170,10 @@ class TrajectoryPlanner(Node):
         self.trajectory_pub = self.create_publisher(PathMsg, self.traj_topic, 1)
 
         # Publisher for the control command
-        if self.simulation:
-            self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
-        else:
-            self.control_pub = self.create_publisher(AckermannDriveStamped, 'drive', 1)
+        self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
 
         #Lab 3, Publishes for FRS Visualization
-        #self.frs_pub = self.create_publisher(MarkerArrray, 'vis/FRS', 1)
+        self.frs_pub = self.create_publisher(MarkerArray, 'vis/FRS', 1)
 
 
     def setup_subscriber(self):
@@ -194,27 +183,13 @@ class TrajectoryPlanner(Node):
         self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 10)
         self.path_sub = self.create_subscription(PathMsg, self.path_topic, self.path_callback, 10)
 
-        # Subscribe to autonomous lock (R1 on DS4)
-        if not self.simulation:
-            self.lock_sub = self.create_subscription(Bool, 'autonomous_lock', self.lock_callback, 1)
 
-    def lock_callback(self, msg: Bool):
-        self.autonomous_enabled = msg.data
-
-        #Lab 3 Task 1.2 Comment if Lab 2
-        #self.static_obs_sub = self.create_subscription(MarkerArray, self.static_obs_topic, self.static_obstacle_callback, 10)
-
-    #Lab 3 Task 1.4 Comment if Lab 2
-    # def static_obstacle_callback(self, msg):
-    #     '''
-    #     Static obstacle callback function
-    #     '''
-    #     if self.simulation:
-    #         self.static_obstacle_dict.clear()
-
-    #     for obs in msg.markers:
-    #         id, vertices = get_obstacle_vertices(obs)
-    #         self.static_obstacle_dict[id] = vertices
+    #Lab 3 Task 1.4
+    def static_obstacle_callback(self, msg):
+        '''
+        Static obstacle callback function
+        '''
+        return 0
 
 
     def setup_service(self):
@@ -228,7 +203,20 @@ class TrajectoryPlanner(Node):
         self.add_on_set_parameters_callback(self._on_params)
 
         #lab 3 Task 3 TBD
-        #self.get_frs = rospy.ServiceProxy('/obstacles/get_frs', GetFRS)
+        self.frs_client = self.create_client(GetFRS, '/obstacles/get_frs')
+
+    def get_frs(self, t_list):
+        req = GetFRS.Request()
+        req.t_list = list(t_list)
+        try:
+            response = self.frs_client.call(req)   # synchronous call
+            return response
+        except Exception as e:
+            self.get_logger().warn(f"FRS service call failed inside get_frs(): {e}")
+            return None
+
+    def frs_available(self):
+        return self.frs_client.wait_for_service(timeout_sec=0.0)
 
     def start_planning_cb(self, req, res):
         '''
@@ -318,6 +306,7 @@ class TrajectoryPlanner(Node):
         # Hint: make sure that the difference in heading is between [-pi, pi]
         # but make sure that the angle is still preserved (e.g. do something
         # with np.mod() to make sure x_diff[3] is in the right range)
+
         accel = 0.0
         steer_rate = 0.0
 
@@ -427,22 +416,22 @@ class TrajectoryPlanner(Node):
                     self.get_logger().warn("Try to retrieve a policy beyond the horizon! Reset the policy buffer!")
                     self.policy_buffer.reset()
                         
-            # publish control command (only when autonomous is enabled or in simulation)
+            # generate control command
+            if not self.simulation and state_cur is not None:
+                # If we are using robot,
+                # the throttle and steering angle needs to convert to PWM signal
+                throttle_pwm, steer_pwm = self.pwm_converter.convert(accel, steer, state_cur[2])
+            else:
+                throttle_pwm = accel
+                steer_pwm = steer                
+            
+            # publish control command
+            servo_msg = ServoMsg()
             control_time = self.get_clock().now().to_msg()
-            if self.simulation:
-                servo_msg = ServoMsg()
-                servo_msg.header.stamp = control_time
-                servo_msg.throttle = accel
-                servo_msg.steer = steer
-                self.control_pub.publish(servo_msg)
-            elif self.autonomous_enabled:
-                ackermann_msg = AckermannDriveStamped()
-                ackermann_msg.header.stamp = control_time
-                speed_cmd = float(state_cur[2] + accel * 0.025) if state_cur is not None else 0.0  # v + a*dt at 40Hz
-                speed_cmd = np.clip(speed_cmd, self.planner.dyn.v_min, self.planner.dyn.v_max)
-                ackermann_msg.drive.speed = speed_cmd
-                ackermann_msg.drive.steering_angle = float(steer)
-                self.control_pub.publish(ackermann_msg)
+            servo_msg.header.stamp = control_time
+            servo_msg.throttle = throttle_pwm
+            servo_msg.steer = steer_pwm
+            self.control_pub.publish(servo_msg)
             
             # Record the control command and state for next iteration
             u_record = np.array([accel, steer, t_act])
