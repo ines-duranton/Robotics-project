@@ -11,7 +11,6 @@ from ece346.lab0_truck.scripts.controller.utils.state_2d import State2D
 
 from racecar_msgs.msg import ServoMsg
 from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import Bool
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import PoseStamped
 from rcl_interfaces.msg import SetParametersResult
@@ -40,10 +39,6 @@ class PurePursuitController(Node):
         self.state_buffer = RealtimeBuffer()
         self.goal_buffer = RealtimeBuffer()
 
-        # Autonomous lock: only publish drive commands when R1 is held
-        self.autonomous_enabled = False
-
-        
 
         # Allow dynamic reconfigure to update parameters at runtime
         self.add_on_set_parameters_callback(self.parameter_callback)
@@ -160,13 +155,6 @@ class PurePursuitController(Node):
         self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 1)
         ########################### END OF TODO 2#################################
 
-        # Subscribe to autonomous lock (R1 on DS4)
-        if not self.simulation:
-            self.lock_sub = self.create_subscription(Bool, 'autonomous_lock', self.lock_callback, 1)
-
-    def lock_callback(self, msg: Bool):
-        self.autonomous_enabled = msg.data
-        
     def odometry_callback(self, odom_msg: Odometry):
         """
         Subscriber callback function for the robot odometry message
@@ -303,6 +291,5 @@ class PurePursuitController(Node):
                     accel = self.throttle_gain * (vel_ref - vel_cur)
                     ########################### END OF TODO 5 ###########################################
                     
-                    # publish the control (only when autonomous is enabled or in simulation)
-                    if self.simulation or self.autonomous_enabled:
-                        self.publish_control(accel, steer, state_cur, vel_ref=vel_ref)
+                    # publish the control
+                    self.publish_control(accel, steer, state_cur, vel_ref=vel_ref)
