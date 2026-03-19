@@ -117,6 +117,10 @@ class TrajectoryPlanner(Node):
         self.min_throttle = self.get_parameter('min_throttle').value
         self.package_path = self.get_parameter('package_path').value
         self.receding_horizon = self.get_parameter('receding_horizon').value
+        
+        #lab3
+        self.static_obstacles = self.get_parameter('static_obstacles_topic').value
+
 
         # Read ROS topic names to subscribe 
         self.odom_topic = self.get_parameter('odom_topic').value
@@ -156,6 +160,8 @@ class TrajectoryPlanner(Node):
         self.control_state_buffer = RealtimeBuffer()
         self.policy_buffer = RealtimeBuffer()
         self.path_buffer = RealtimeBuffer()
+        
+        self.static_obstacle_dict = {}
 
 
 
@@ -173,7 +179,7 @@ class TrajectoryPlanner(Node):
         self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
 
         #Lab 3, Publishes for FRS Visualization
-        self.frs_pub = self.create_publisher(MarkerArray, 'vis/FRS', 1)
+        self.frs_pub = self.create_publisher(MarkerArray, 'vis/FRS', 10)
 
 
     def setup_subscriber(self):
@@ -182,14 +188,18 @@ class TrajectoryPlanner(Node):
         '''
         self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 10)
         self.path_sub = self.create_subscription(PathMsg, self.path_topic, self.path_callback, 10)
+        #lab3
+        self.static_obstacle = self.create_subscription(MarkerArray, self.static_obstacles, self.static_obstacle_callback, 10)
 
 
-    #Lab 3 Task 1.4
+    #Lab3 Task 1.4
     def static_obstacle_callback(self, msg):
         '''
         Static obstacle callback function
         '''
-        return 0
+        for obstacle in msg.markers:
+            id, vertices = get_obstacle_vertices(obstacle)
+            self.static_obstacle_dict[id] = vertices
 
 
     def setup_service(self):
@@ -307,8 +317,10 @@ class TrajectoryPlanner(Node):
         # but make sure that the angle is still preserved (e.g. do something
         # with np.mod() to make sure x_diff[3] is in the right range)
 
-        accel = 0.0
-        steer_rate = 0.0
+        u = u_ref + K_closed_loop @ (x - x_ref)
+
+        accel = u[0]
+        steer_rate = u[1]
 
         ##### END OF TODO ##############
 
@@ -542,6 +554,45 @@ class TrajectoryPlanner(Node):
                 - Publish the new policy for RVIZ visualization
                     for example: self.trajectory_pub.publish(new_policy.to_msg())       
             '''
+
+
+            if self.plan_state_buffer.new_data_available :
+                state = self.plan_state_buffer.readFromRT()
+                curr_t = state[-1]
+                state = state[:-1]
+
+
+
+                if ((curr_t - t_last_replan) > self.replan_dt) :
+                    prev_policy = self.policy_buffer.readFromRT()
+                    controls = None
+                    if prev_policy is not None:
+                        controls = prev_policy.get_ref_controls(curr_t)
+                    
+                    obstacles_list = []
+                    for values in self.static_obstacle_dict.values():
+                        obstacles_list.append(values)
+
+                    request = curr_t + np.arange(self.planner.T) * self.planner.dt
+                    response = self.get_frs(request)
+                    obstacles_list.extend(frs_to_obstacle(response))
+                    self.frs_pub.publish(frs_to_msg(response)) # 
+
+                    self.planner.update_obstacles(obstacles_list)
+                    if self.path_buffer.new_data_available:    
+                        new_path = self.path_buffer.readFromRT()
+                        self.planner.update_ref_path(new_path)
+                    new_plan = self.planner.plan(state, controls)
+                    if new_plan['status'] == 0 and self.planner_ready:
+                        new_policy = Policy(X = new_plan['trajectory'], 
+                                            U = new_plan['controls'], 
+                                            K = new_plan['K_closed_loop'], 
+                                            t0 = curr_t, 
+                                            dt = self.planner.dt, 
+                                            T = self.planner.T)
+                        self.policy_buffer.writeFromNonRT(new_policy)
+                        self.trajectory_pub.publish(new_policy.to_msg())
+                        t_last_replan = curr_t
             ###############################
             #### END OF TODO #############
             ###############################

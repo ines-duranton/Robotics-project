@@ -140,68 +140,50 @@ class ILQR():
 		obs_refs = self.collision_checker.check_collisions(trajectory, self.obstacle_list)
 		return path_refs, obs_refs
 
-	def backward_pass(self, trajectory, controls, path_refs, obs_refs):
+	def backward_pass(self, trajectory, controls, path_refs, obs_refs, regular):
 		'''
 		calculate backward pass in iLQR
 		'''
-		# Given the trajectory, control seq, and references, return Jacobians and Hessians of cost
-		# function
 		q, r, Q, R, H = self.cost.get_derivatives_np(trajectory, controls, path_refs, obs_refs)
-        
-        # Returns the linearized 'A' and 'B' matrix of the ego vehicle around
-		# nominal trajectory and controls.
 		A, B = self.dyn.get_jacobian_np(trajectory, controls)
-		T = self.T
-        
-		k_open_loop = np.zeros((self.dim_u, T))
-		K_closed_loop = np.zeros((self.dim_u, self.dim_x, T))
-        
-		# derivative of value function at final step
-		p = q[:,T-1]
-		P = Q[:,:,T-1]
-		t = T-2
-        
-		reg_attempt = 0
-		reg = self.reg_init
-		while t>=0:
-			Q_x = q[:,t] + A[:,:,t].T @ p
-			Q_u = r[:,t] + B[:,:,t].T @ p
-			Q_xx = Q[:,:,t] + A[:,:,t].T @ P @ A[:,:,t] 
-			Q_uu = R[:,:,t] + B[:,:,t].T @ P @ B[:,:,t]
-			Q_ux = H[:,:,t] + B[:,:,t].T @ P @ A[:,:,t]
 
-			# Add regularization
-			reg_matrix = reg*np.eye((B.T.shape)[-1])
-			# print(R.shape)
-			# print((B.T.shape)[-1])
-			Q_uu_reg = R[:,:,t] + B[:,:,t].T @ (P+reg_matrix) @ B[:,:,t]
-			Q_ux_reg = H[:,:,t] + B[:,:,t].T @ (P+reg_matrix) @ A[:,:,t]
+		p = q[:, self.T-1] 
+		P = Q[:, :, self.T-1]   
 
+		reg = regular
+
+		K_closed_loop = np.zeros((self.dim_u, self.dim_x, self.T))
+		k_open_loop = np.zeros((self.dim_u ,self.T))
+
+		t = self.T - 2 
+
+		while t >= 0:
+			Qxt = q[:, t] + A[:, :, t].T @ p
+			Qut = r[:, t] + B[:, :, t].T @ p   
+			Qxxt = Q[:, :, t] + A[:, :, t].T @ P @ A[:, :, t]
+			Quut = R[:, :, t] + B[:, :, t].T @ P @ B[:, :, t]
+			Quxt = H[:, :, t] + B[:, :, t].T @ P @ A[:, :, t]
+
+			QuutR = R[:, :, t] + B[:, :, t].T @ (P + reg * np.identity(self.dim_x)) @ B[:, :, t]
+			QuxtR = H[:, :, t] + B[:, :, t].T @ (P + reg * np.identity(self.dim_x)) @ A[:, :, t]
+
+			eigenvals = np.linalg.eigvals(QuutR)
+			if np.min(eigenvals) <= 0 :
+				reg = min(reg * self.reg_scale_up, self.reg_max)
+				t = self.T - 2
+				p = q[:, self.T-1]  
+				P = Q[:, :, self.T-1]
+				continue 
 			
-			# check if Q_uu_reg is PD
-			if not np.all(np.linalg.eigvals(Q_uu_reg) > 0) and reg < self.reg_max and reg_attempt < self.max_attempt:
-				reg *= self.reg_scale_up
-				t = T-2
-				p = q[:,T-1]
-				P = Q[:,:,T-1]
-				reg_attempt += 1
-				continue
+			K_closed_loop[:, :, t] = -np.linalg.inv(QuutR) @ QuxtR
+			k_open_loop[:, t] = -np.linalg.inv(QuutR) @ Qut
 
+			p = Qxt + K_closed_loop[:, :, t].T @ Qut + K_closed_loop[:, :, t].T @ Quut @ k_open_loop[ :, t] + Quxt.T @ k_open_loop[:, t]
+			P = Qxxt + K_closed_loop[:, :, t].T @ Quut @ K_closed_loop[:, :, t] + K_closed_loop[:, :, t].T @ Quxt + Quxt.T @ K_closed_loop[:, :, t]
 
-			Q_uu_reg_inv = np.linalg.inv(Q_uu_reg)
-			# Calculate policy
-			k = -Q_uu_reg_inv@Q_u
-			K = -Q_uu_reg_inv@Q_ux_reg
-			k_open_loop[:,t] = k          
-			K_closed_loop[:, :, t] = K
-			
-			# Update value function derivative for the previous time step
-			p = Q_x + K.T @ Q_uu @ k + K.T@Q_u + Q_ux.T@k
-			P = Q_xx + K.T @ Q_uu @ K + K.T@Q_ux + Q_ux.T@K
-			t -= 1
-			last_reg = reg
-	
-		reg = max(self.reg_min, reg/self.reg_scale_down)
+			t = t - 1
+			#reg = reg / self.reg_scale_down
+		last_reg = max(self.reg_min, reg/self.reg_scale_down) 
 	
 		return K_closed_loop, k_open_loop, last_reg
 
@@ -271,11 +253,6 @@ class ILQR():
 		# Get the initial cost of the trajectory.
 		J = self.cost.get_traj_cost(trajectory, controls, path_refs, obs_refs)
   
-		converged = False
-		status = 0
-		K_closed_loop = np.zeros((self.dim_u, self.dim_x, self.T))
-		k_open_loop = np.zeros((self.dim_u, self.T))
-
 		##########################################################################
 		# TODO 1: Implement the ILQR algorithm. Feel free to add any helper functions.
 		# You will find following implemented functions useful:
@@ -337,13 +314,41 @@ class ILQR():
 		
 		########################### #END of TODO 1 #####################################
 
+		converge = False
+		reg = self.reg_init
+		for i in range(self.max_iter):
+			K, k, reg = self.backward_pass(trajectory, controls, path_refs, obs_refs, reg)
+			
+			for alpha in self.alphas:
+				new_trajectory, new_controls = self.forward_pass(trajectory, controls, K, k, alpha)
+				new_path_refs , new_obs_refs = self.get_references(new_trajectory)
+				changed = False
+				J2 = self.cost.get_traj_cost(new_trajectory, new_controls, new_path_refs, new_obs_refs)
+				if J2 < J:
+					if np.abs(J2-J)< self.tol : 
+						converge = True
+					J = J2
+					trajectory = new_trajectory
+					controls = new_controls
+					path_refs = new_path_refs
+					obs_refs = new_obs_refs
+					changed = True
+					break
+			if not changed:
+				status = 1.0
+				break
+			if converge == True :
+				status = 0.0
+				break			
+
 		t_process = time.time() - t_start
 		solver_info = dict(
 				t_process=t_process, # Time spent on planning
 				trajectory = trajectory,
 				controls = controls,
-				status=status, # TODO: Fill this in
-				K_closed_loop=K_closed_loop, # TODO: Fill this in
-				k_open_loop=k_open_loop, # TODO: Fill this in
+				status= status, #	TODO: Fill this in
+				K_closed_loop= K, # TODO: Fill this in
+				k_open_loop= k # TODO: Fill this in
+				# Optional TODO: Fill in other information you want to return
 		)
 		return solver_info
