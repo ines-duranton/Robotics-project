@@ -20,7 +20,6 @@ from rclpy.clock import Clock
 
 from racecar_msgs.msg import ServoMsg
 from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import Bool
 
 #for packages
 from ament_index_python.packages import get_package_share_directory
@@ -167,8 +166,6 @@ class TrajectoryPlanner(Node):
         # Indicate if the planner is ready to generate a new trajectory
         self.planner_ready = True
 
-        # Autonomous lock: only publish drive commands when R1 is held
-        self.autonomous_enabled = False
 
     def setup_publisher(self):
         '''
@@ -193,13 +190,6 @@ class TrajectoryPlanner(Node):
         '''
         self.pose_sub = self.create_subscription(Odometry, self.odom_topic, self.odometry_callback, 10)
         self.path_sub = self.create_subscription(PathMsg, self.path_topic, self.path_callback, 10)
-
-        # Subscribe to autonomous lock (R1 on DS4)
-        if not self.simulation:
-            self.lock_sub = self.create_subscription(Bool, 'autonomous_lock', self.lock_callback, 1)
-
-    def lock_callback(self, msg: Bool):
-        self.autonomous_enabled = msg.data
 
         #Lab 3 Task 1.2 Comment if Lab 2
         #self.static_obs_sub = self.create_subscription(MarkerArray, self.static_obs_topic, self.static_obstacle_callback, 10)
@@ -435,7 +425,7 @@ class TrajectoryPlanner(Node):
                 servo_msg.throttle = accel
                 servo_msg.steer = steer
                 self.control_pub.publish(servo_msg)
-            elif self.autonomous_enabled:
+            else:
                 ackermann_msg = AckermannDriveStamped()
                 ackermann_msg.header.stamp = control_time
                 speed_cmd = float(state_cur[2] + accel * 0.025) if state_cur is not None else 0.0  # v + a*dt at 40Hz
