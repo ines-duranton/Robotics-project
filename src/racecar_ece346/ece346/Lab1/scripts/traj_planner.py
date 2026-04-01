@@ -19,6 +19,7 @@ from rclpy.time import Time
 from rclpy.clock import Clock
 
 from racecar_msgs.msg import ServoMsg
+from ackermann_msgs.msg import AckermannDriveStamped
 
 #for packages
 from ament_index_python.packages import get_package_share_directory
@@ -33,7 +34,7 @@ from std_srvs.srv import Empty
 from rcl_interfaces.msg import ParameterDescriptor, FloatingPointRange
 from rcl_interfaces.msg import SetParametersResult
 
-from ece346.Lab1.scripts.ILQR.config import Config
+from ece346.lab1_truck.scripts.ILQR.config import Config
 
 # You will use the imports below for lab3   
 # from racecar_msgs.msg import OdometryArray
@@ -105,7 +106,7 @@ class TrajectoryPlanner(Node):
         self.declare_parameter('simulation', True)
         self.declare_parameter('receding_horizon', False)
         self.declare_parameter('replan_dt', 0.1)
-        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab1_ilqr.yaml"))
+        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "lab2_ilqr.yaml"))
         self.declare_parameter('PWM_model', os.path.join(self.package, "config", "mlp_model.sav"))
         self.declare_parameter('max_throttle', 0.5)
         self.declare_parameter('min_throttle', -0.35)
@@ -165,6 +166,7 @@ class TrajectoryPlanner(Node):
         # Indicate if the planner is ready to generate a new trajectory
         self.planner_ready = True
 
+
     def setup_publisher(self):
         '''
         This function sets up the publisher for the trajectory
@@ -173,7 +175,10 @@ class TrajectoryPlanner(Node):
         self.trajectory_pub = self.create_publisher(PathMsg, self.traj_topic, 1)
 
         # Publisher for the control command
-        self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
+        if self.simulation:
+            self.control_pub = self.create_publisher(ServoMsg, self.control_topic, 1)
+        else:
+            self.control_pub = self.create_publisher(AckermannDriveStamped, 'drive', 1)
 
         #Lab 3, Publishes for FRS Visualization
         #self.frs_pub = self.create_publisher(MarkerArrray, 'vis/FRS', 1)
@@ -303,10 +308,8 @@ class TrajectoryPlanner(Node):
         # Hint: make sure that the difference in heading is between [-pi, pi]
         # but make sure that the angle is still preserved (e.g. do something
         # with np.mod() to make sure x_diff[3] is in the right range)
-        u = u_ref + K_closed_loop @ (x - x_ref)
-
-        accel = u[0]
-        steer_rate = u[1]
+        accel = 0.0
+        steer_rate = 0.0
 
         ##### END OF TODO ##############
 
@@ -414,22 +417,22 @@ class TrajectoryPlanner(Node):
                     self.get_logger().warn("Try to retrieve a policy beyond the horizon! Reset the policy buffer!")
                     self.policy_buffer.reset()
                         
-            # generate control command
-            if not self.simulation and state_cur is not None:
-                # If we are using robot,
-                # the throttle and steering angle needs to convert to PWM signal
-                throttle_pwm, steer_pwm = self.pwm_converter.convert(accel, steer, state_cur[2])
-            else:
-                throttle_pwm = accel
-                steer_pwm = steer                
-            
-            # publish control command
-            servo_msg = ServoMsg()
+            # publish control command (only when autonomous is enabled or in simulation)
             control_time = self.get_clock().now().to_msg()
-            servo_msg.header.stamp = control_time
-            servo_msg.throttle = throttle_pwm
-            servo_msg.steer = steer_pwm
-            self.control_pub.publish(servo_msg)
+            if self.simulation:
+                servo_msg = ServoMsg()
+                servo_msg.header.stamp = control_time
+                servo_msg.throttle = accel
+                servo_msg.steer = steer
+                self.control_pub.publish(servo_msg)
+            else:
+                ackermann_msg = AckermannDriveStamped()
+                ackermann_msg.header.stamp = control_time
+                speed_cmd = float(state_cur[2] + accel * 0.025) if state_cur is not None else 0.0  # v + a*dt at 40Hz
+                speed_cmd = np.clip(speed_cmd, self.planner.dyn.v_min, self.planner.dyn.v_max)
+                ackermann_msg.drive.speed = speed_cmd
+                ackermann_msg.drive.steering_angle = float(steer)
+                self.control_pub.publish(ackermann_msg)
             
             # Record the control command and state for next iteration
             u_record = np.array([accel, steer, t_act])
@@ -540,31 +543,6 @@ class TrajectoryPlanner(Node):
                 - Publish the new policy for RVIZ visualization
                     for example: self.trajectory_pub.publish(new_policy.to_msg())       
             '''
-            if self.plan_state_buffer.new_data_available :
-                state = self.plan_state_buffer.readFromRT()
-                curr_t = state[-1]
-                state = state[:-1]
-
-                if ((curr_t - t_last_replan) > self.replan_dt) :
-                    prev_policy = self.policy_buffer.readFromRT()
-                    controls = None
-                    if prev_policy is not None:
-                        controls = prev_policy.get_ref_controls(curr_t)
-                    if self.path_buffer.new_data_available :
-                        new_path = self.path_buffer.readFromRT()
-                        self.planner.update_ref_path(new_path)
-                    new_plan = self.planner.plan(state, controls)
-                    if new_plan['status'] == 0 and self.planner_ready:
-                        new_policy = Policy(X = new_plan['trajectory'], 
-                                            U = new_plan['controls'], 
-                                            K = new_plan['K_closed_loop'], 
-                                            t0 = curr_t, 
-                                            dt = self.planner.dt, 
-                                            T = self.planner.T)
-                        self.policy_buffer.writeFromNonRT(new_policy)
-                        self.trajectory_pub.publish(new_policy.to_msg())
-                        t_last_replan = curr_t
-                    
             ###############################
             #### END OF TODO #############
             ###############################
