@@ -41,7 +41,15 @@ class BCNetwork(nn.Module):
         #       nn.Linear(??, output_size),
         #   )
 
-        raise NotImplementedError("TODO: Define your network architecture")
+        self.network = nn.Sequential(
+            nn.Linear(input_size, 64),
+            nn.ReLU(),
+            nn.Linear(64,64),
+            nn.ReLU(),
+            nn.Linear(64, output_size),
+        )
+
+        #raise NotImplementedError("TODO: Define your network architecture")
 
         # TODO: Define your optimizer and loss function.
         # Example:
@@ -51,7 +59,10 @@ class BCNetwork(nn.Module):
         # https://docs.pytorch.org/docs/stable/nn.html#loss-functions
         #   self.loss_fn = nn.MSELoss() 
 
-        raise NotImplementedError("TODO: Define your optimizer and loss function")
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        self.loss_fn = nn.MSELoss()
+
+        #raise NotImplementedError("TODO: Define your optimizer and loss function")
 
     def forward(self, x):
         """
@@ -64,7 +75,9 @@ class BCNetwork(nn.Module):
             output tensor (N, output_size)
         """
         # TODO: Pass x through your network and return the output.
-        raise NotImplementedError("TODO: Implement forward pass")
+        #raise NotImplementedError("TODO: Implement forward pass")
+
+        return self.network(x)
 
     def train_step(self, x: np.ndarray, y: np.ndarray, w: np.ndarray = None) -> float:
         """
@@ -86,7 +99,26 @@ class BCNetwork(nn.Module):
             4. Zero gradients, backprop, optimizer step
             5. Return loss.item()
         """
-        raise NotImplementedError("TODO: Implement training step")
+        #raise NotImplementedError("TODO: Implement training step")
+
+        x = torch.FloatTensor(x)
+        y = torch.FloatTensor(y)
+
+        pred = self.forward(x)
+
+        if w is not None:
+            w = torch.FloatTensor(w).view(-1,1)
+            loss = torch.mean(w * (pred - y)**2)
+        else:
+            loss = self.loss_fn(pred, y)
+        
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return loss.item()
+    
+
 
     @torch.no_grad()
     def predict(self, x: np.ndarray) -> np.ndarray:
