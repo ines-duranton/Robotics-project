@@ -44,6 +44,33 @@ install(PROGRAMS
   DESTINATION lib/${PROJECT_NAME}
 )
 
+# FinalProject executables (prefixed with fp_ to avoid collisions)
+install(PROGRAMS
+  ece346/FinalProject/scripts/safety_filter_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fp_safety_filter_node.py
+)
+install(PROGRAMS
+  ece346/FinalProject/scripts/joy_to_ackermann_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fp_joy_to_ackermann_node.py
+)
+install(PROGRAMS
+  ece346/FinalProject/scripts/drive_to_servo_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fp_drive_to_servo_node.py
+)
+install(PROGRAMS
+  ece346/FinalProject/scripts/obstacle_detection_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fp_obstacle_detection_node.py
+)
+install(PROGRAMS
+  ece346/FinalProject/scripts/static_obstacle_publisher_node.py
+  DESTINATION lib/${PROJECT_NAME}
+  RENAME fp_static_obstacle_publisher_node.py
+)
+
 # Data files
 
 #config files
@@ -54,6 +81,7 @@ install(DIRECTORY
   ece346/lab1_truck/config
   ece346/Lab3/config
   ece346/Lab5/config
+  ece346/FinalProject/config
   DESTINATION share/${PROJECT_NAME}
 )
 
@@ -65,6 +93,7 @@ install(DIRECTORY
   ece346/lab1_truck/launch
   ece346/Lab3/launch
   ece346/Lab5/launch
+  ece346/FinalProject/launch
   DESTINATION share/${PROJECT_NAME}
 )
 
