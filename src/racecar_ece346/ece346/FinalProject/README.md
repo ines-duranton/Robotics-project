@@ -94,6 +94,7 @@ when you launch the project.
 ## 3. Launch the project in simulation
 
 ```bash
+source setup_cyclone.sh <Truck_IP> <DOMAIN_ID>
 ros2 launch racecar_ece346 final_project_simulation_launch.py
 ```
 
