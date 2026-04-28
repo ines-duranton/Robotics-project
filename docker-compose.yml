@@ -22,6 +22,9 @@ services:
     # --- Networking ---
     network_mode: host
 
+    # --- Bluetooth / joystick pairing from inside the container ---
+    privileged: true
+
     # --- GUI / X11 forwarding ---
     environment:
       - DISPLAY=${DISPLAY}
@@ -35,14 +38,17 @@ services:
       - ./src:/ros2_ws/src:rw
       # CycloneDDS setup script
       - ./setup_cyclone.sh:/ros2_ws/setup_cyclone.sh:ro
+      # Host dbus for bluetoothctl (PS4 controller pairing)
+      - /var/run/dbus:/var/run/dbus:rw
       # Persist colcon build artifacts between runs
       - ros2_build:/ros2_ws/build
       - ros2_install:/ros2_ws/install
       - ros2_log:/ros2_ws/log
 
-    # --- GPU passthrough (AMD/Intel via DRI, harmless if not present) ---
+    # --- GPU + joystick passthrough ---
     devices:
       - /dev/dri:/dev/dri
+      - /dev/input:/dev/input
 
 volumes:
   ros2_build:

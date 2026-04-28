@@ -75,6 +75,10 @@ This lab runs on the **real truck**, not in simulation. Before launching any nod
 In this task, you will drive the truck manually and record training data.
 
 ### Launching the Recorder
+Outside the Docker container, rebuikd:
+```
+./start.sh build
+```
 
 On your host computer, inside the Docker container:
 ```bash
@@ -87,6 +91,7 @@ ros2 launch racecar_ece346 lab5_record_launch.py
 
 In a separate terminal, arm the recorder:
 ```bash
+source setup_cyclone.sh <TRUCK_ID> <ROS_DOMAIN>
 ros2 service call /learning/start_record std_srvs/srv/Empty
 ```
 
@@ -200,7 +205,7 @@ In a separate terminal:
 ros2 service call /learning/start_eval std_srvs/srv/Empty
 ```
 
-**Hold R2** on the joystick to enable autonomous driving. Release R2 at any time to stop the truck immediately.
+**Hold R1** on the joystick to enable autonomous driving. Release R1 at any time to stop the truck immediately.
 
 To stop the model:
 ```bash
@@ -210,8 +215,8 @@ ros2 service call /learning/stop_eval std_srvs/srv/Empty
 ### Safety
 
 The `control_gate` on the truck ensures safety:
-- **R2 held** — autonomous commands are forwarded to the motors
-- **R2 released** — truck stops immediately (zero velocity)
+- **R1 held** — autonomous commands are forwarded to the motors
+- **R1 released** — truck stops immediately (zero velocity)
 - **L2 held** — manual override (teleop mode)
 - **Both or neither** — truck stops
 
