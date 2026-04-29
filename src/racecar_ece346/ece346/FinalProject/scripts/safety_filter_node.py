@@ -97,27 +97,53 @@ class SafetyFilterNode(Node):
         super().__init__('safety_filter_node')
 
         # ---- TODO(Task 1.1): declare ROS parameters ----
-
+        self.declare_parameter('teleop_topic')
+        self.declare_parameter('drive_topic')
+        self.declare_parameter('odom_topic')
+        self.declare_parameter('static_obs_topic')  
+        self.declare_parameter('publish_rate')
 
         # ---- TODO(Task 1.2): read parameter values ----
 
-        self._latest_teleop = None     # AckermannDriveStamped
-        self._latest_odom = None       # Odometry
-        self._latest_obs = None        # MarkerArray
+        teleop_topic1 = self.get_parameter('teleop_topic').value     # AckermannDriveStamped
+        odom_topic = self.get_parameter('odom_topic').value      # Odometry
+        obs_topic = self.get_parameter('static_obs_topic').value        # MarkerArray
+        drive_topic = self.get_parameter('drive_topic').value
+        self.publish_rate = self.get_parameter('publish_rate').value
+
+        self.teleop_current = None
+        self.odom_current = None
+        self.obs_stat_current = None
 
         # ---- TODO(Task 1.3): create subscribers ----
-
+        self.create_subscription(AckermannDriveStamped, teleop_topic1, self.teleop_cb, 1)
+        self.create_subscription(Odometry, odom_topic, self.odom_cb, 1)
+        self.create_subscription(MarkerArray, obs_topic, self.obs_stat_cb, 1)
 
         # ---- TODO(Task 1.4): create the publisher ----
+        self.pub = self.create_publisher(AckermannDriveStamped, drive_topic, 1)
 
         # ---- TODO(Task 1.5): create a timer at publish_rate Hz ----
+        self.create_timer(1/self.publish_rate, self._publish_filtered)
 
         self.get_logger().info(
-            f"safety_filter_node ready: {teleop_topic} + {odom_topic} "
+            f"Publish rate: {self.publish_rate}"
+        )
+
+        self.get_logger().info(
+            f"safety_filter_node ready: {teleop_topic1} + {odom_topic} "
             f"+ {obs_topic} -> {drive_topic}"
         )
 
     # ---- TODO(Task 1.6): implement callbacks ----
+    def teleop_cb(self, msg: AckermannDriveStamped):
+        self.teleop_current = msg
+    
+    def odom_cb(self, msg: Odometry):
+        self.odom_current = msg
+    
+    def obs_stat_cb(self, msg: MarkerArray):
+        self.obs_stat_current = msg
 
 
     # ---- TODO(Task 1.7): the timer callback ----
@@ -127,8 +153,16 @@ class SafetyFilterNode(Node):
     #   - if the returned command is not None, update its header.stamp to now
     #     and publish it on /drive
     #
-    # def _publish_filtered(self):
-    #   
+    def _publish_filtered(self):
+        if self.teleop_current == None:
+            return
+        else:
+            command = self.safety_filter(self.teleop_current, self.odom_current, self.obs_stat_current)
+            if command != None:
+                command.header.stamp = self.get_clock().now().to_msg()
+                self.pub.publish(command)
+            return
+
 
     # =========================================================================
     # TASK 2 — Safety filter implementation
