@@ -6,8 +6,9 @@ You will build a ROS 2 safety filter: a node that sits between a human driver
 (PS4 joystick) and the vehicle and intervenes when the human's command would
 cause a collision or send the car far off the planned route.
 
-There are **2 tasks**. You will demo your solution in the simulator (laptop)
-and on the real truck during demo day.
+There are **2 tasks**. You will develop and test your solution in the
+**simulator** on your laptop, but the **live demo on May 5 is on the real
+truck only** — no simulator during demo day.
 
 ---
 
@@ -92,8 +93,10 @@ when you launch the project.
 ---
 
 ## 3. Launch the project in simulation
+Note: TRUCK_IP here doesn't matter. The purpose of this command is to set DOMAIN_ID
 
 ```bash
+source setup_cyclone.sh <Truck_IP> <DOMAIN_ID>
 ros2 launch racecar_ece346 final_project_simulation_launch.py
 ```
 
@@ -238,7 +241,7 @@ exposes helpers like `get_shortest_path`, `get_lanelet_speed_limit`, etc.
 
 Set a goal in RViz: click the **"2D Goal Pose"** tool, then click on the
 track. The routing node plans a route and publishes it on `/Routing/Path`;
-you'll see the route drawn as a purple line in RViz.
+you'll see the route drawn as a red line in RViz.
 
 ---
 
@@ -314,7 +317,8 @@ ros2 launch racecar_ece346 final_project_truck_launch.py
 ```
 
 This brings up the same node layout as sim **minus** the simulator and the
-sim-only bridge. `obstacle_detection_node` reads AprilTag detections instead
+sim-only bridge — your `safety_filter_node.py` code and config yamls are
+identical between the two environments. `obstacle_detection_node` reads AprilTag detections instead
 of click-to-place obstacles, and f1tenth_stack's `control_gate` consumes
 your `/drive` directly. Your filter code and config are identical to sim.
 

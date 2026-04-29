@@ -104,11 +104,11 @@ class StaticObstaclePublisher(Node):
             gp.action = Marker.ADD
             gp.pose.position.x = float(self.gp_cx)
             gp.pose.position.y = float(self.gp_cy)
-            gp.pose.position.z = -0.005
-            gp.pose.orientation.w = 1.0
+            gp.pose.position.z = 0.01   # top face at z=0.02 → above lane
+            gp.pose.orientation.w = 1.0  # geometry so TopDownOrtho hits it
             gp.scale.x = float(self.gp_size)
             gp.scale.y = float(self.gp_size)
-            gp.scale.z = 0.01
+            gp.scale.z = 0.02
             gp.color.r = 0.3
             gp.color.g = 0.3
             gp.color.b = 0.3

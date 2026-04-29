@@ -45,10 +45,13 @@ install(PROGRAMS
 )
 
 # FinalProject executables (prefixed with fp_ to avoid collisions)
+# safety_filter_node.py is the student-edited file — installed via
+# ament_python_install_package (symlinked). The fp_ wrapper imports it
+# and is itself installed WITHOUT RENAME so --symlink-install works and
+# edits are live without a rebuild.
 install(PROGRAMS
-  ece346/FinalProject/scripts/safety_filter_node.py
+  ece346/FinalProject/scripts/fp_safety_filter_node.py
   DESTINATION lib/${PROJECT_NAME}
-  RENAME fp_safety_filter_node.py
 )
 install(PROGRAMS
   ece346/FinalProject/scripts/joy_to_ackermann_node.py
