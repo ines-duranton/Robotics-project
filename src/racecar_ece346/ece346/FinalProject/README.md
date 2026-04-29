@@ -92,6 +92,7 @@ when you launch the project.
 ---
 
 ## 3. Launch the project in simulation
+Note: TRUCK_IP here doesn't matter. The purpose of this command is to set DOMAIN_ID
 
 ```bash
 source setup_cyclone.sh <Truck_IP> <DOMAIN_ID>
