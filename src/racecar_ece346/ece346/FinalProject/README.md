@@ -6,8 +6,9 @@ You will build a ROS 2 safety filter: a node that sits between a human driver
 (PS4 joystick) and the vehicle and intervenes when the human's command would
 cause a collision or send the car far off the planned route.
 
-There are **2 tasks**. You will demo your solution in the simulator (laptop)
-and on the real truck during demo day.
+There are **2 tasks**. You will develop and test your solution in the
+**simulator** on your laptop, but the **live demo on May 5 is on the real
+truck only** — no simulator during demo day.
 
 ---
 
@@ -316,7 +317,8 @@ ros2 launch racecar_ece346 final_project_truck_launch.py
 ```
 
 This brings up the same node layout as sim **minus** the simulator and the
-sim-only bridge. `obstacle_detection_node` reads AprilTag detections instead
+sim-only bridge — your `safety_filter_node.py` code and config yamls are
+identical between the two environments. `obstacle_detection_node` reads AprilTag detections instead
 of click-to-place obstacles, and f1tenth_stack's `control_gate` consumes
 your `/drive` directly. Your filter code and config are identical to sim.
 
