@@ -240,7 +240,7 @@ exposes helpers like `get_shortest_path`, `get_lanelet_speed_limit`, etc.
 
 Set a goal in RViz: click the **"2D Goal Pose"** tool, then click on the
 track. The routing node plans a route and publishes it on `/Routing/Path`;
-you'll see the route drawn as a purple line in RViz.
+you'll see the route drawn as a red line in RViz.
 
 ---
 
