@@ -43,6 +43,9 @@ executable — in which case ask first.
 """
 
 import math
+import queue
+import numpy as np
+import os
 
 import rclpy
 from rclpy.node import Node
@@ -50,6 +53,18 @@ from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDriveStamped
 from nav_msgs.msg import Odometry
 from visualization_msgs.msg import MarkerArray
+from nav_msgs.msg import Path as PathMsg # I think this is the /Routing/Path
+from geometry_msgs.msg import PoseStamped
+
+
+from scipy.spatial.transform import Rotation as R
+
+from ament_index_python.packages import get_package_share_directory
+
+from ece346.FinalProject.ILQR_Example.ref_path import RefPath
+from ece346.FinalProject.ILQR_Example.ilqr import ILQR
+
+# from ece346.FinalProject.config import config
 
 
 def yaw_from_quat(qx, qy, qz, qw):
@@ -57,6 +72,38 @@ def yaw_from_quat(qx, qy, qz, qw):
     siny_cosp = 2.0 * (qw * qz + qx * qy)
     cosy_cosp = 1.0 - 2.0 * (qy * qy + qz * qz)
     return math.atan2(siny_cosp, cosy_cosp)
+
+# helper function to compute the next state
+def dyn_step(x, u, dt):
+    dx = np.array([x[2]*np.cos(x[3]),
+            x[2]*np.sin(x[3]),
+            u[0],
+            x[2]*np.tan(u[1]*1.1)/0.257,
+            0])
+    x_new = x + dx*dt
+    x_new[2] = max(0, x_new[2]) # do not allow negative velocity
+    x_new[3] = np.mod(x_new[3] + np.pi, 2 * np.pi) - np.pi
+    x_new[-1] = u[1]
+    return x_new
+
+def path_callback(path_msg):
+        x = []
+        y = []
+        width_L = []
+        width_R = []
+        speed_limit = []
+        
+        for waypoint in path_msg.poses:
+            x.append(waypoint.pose.position.x)
+            y.append(waypoint.pose.position.y)
+            width_L.append(waypoint.pose.orientation.x)
+            width_R.append(waypoint.pose.orientation.y)
+            speed_limit.append(waypoint.pose.orientation.z)
+                    
+        centerline = np.array([x, y])
+        
+        ref_path = RefPath(centerline, width_L, width_R, speed_limit, loop=False)
+        return ref_path
 
 
 class SafetyFilterNode(Node):
@@ -103,22 +150,43 @@ class SafetyFilterNode(Node):
         self.declare_parameter('static_obs_topic')  
         self.declare_parameter('publish_rate')
 
+        self.package = get_package_share_directory("racecar_ece346")
+
+        self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "final_truck_ilqr.yaml"))
+
+        # For routing path
+        self.declare_parameter('goal_topic', '/goal_pose')
+        self.declare_parameter('routing_path_topic', '/Routing/Path')
+
+        self.declare_parameter('projection_dt')
+
         # ---- TODO(Task 1.2): read parameter values ----
 
         teleop_topic1 = self.get_parameter('teleop_topic').value     # AckermannDriveStamped
         odom_topic = self.get_parameter('odom_topic').value      # Odometry
         obs_topic = self.get_parameter('static_obs_topic').value        # MarkerArray
         drive_topic = self.get_parameter('drive_topic').value
+        goal_topic = self.get_parameter('goal_topic').value # Pose
+        routing_topic = self.get_parameter('routing_path_topic').value
+        self.ilqr_params_file = self.get_parameter('ilqr_params_file').value
+
         self.publish_rate = self.get_parameter('publish_rate').value
+
+        self.dt = self.get_parameter('projection_dt').value
+        
 
         self.teleop_current = None
         self.odom_current = None
         self.obs_stat_current = None
+        self.goal_current = None
+        self.goal_routing = None
 
         # ---- TODO(Task 1.3): create subscribers ----
         self.create_subscription(AckermannDriveStamped, teleop_topic1, self.teleop_cb, 1)
         self.create_subscription(Odometry, odom_topic, self.odom_cb, 1)
         self.create_subscription(MarkerArray, obs_topic, self.obs_stat_cb, 1)
+        self.create_subscription(PoseStamped, goal_topic, self.goal_cb, 1)
+        self.create_subscription(PathMsg, routing_topic, self.routing_cb, 1)
 
         # ---- TODO(Task 1.4): create the publisher ----
         self.pub = self.create_publisher(AckermannDriveStamped, drive_topic, 1)
@@ -132,7 +200,7 @@ class SafetyFilterNode(Node):
 
         self.get_logger().info(
             f"safety_filter_node ready: {teleop_topic1} + {odom_topic} "
-            f"+ {obs_topic} -> {drive_topic}"
+            f"+ {obs_topic} + {goal_topic} -> {drive_topic}"
         )
 
     # ---- TODO(Task 1.6): implement callbacks ----
@@ -144,6 +212,12 @@ class SafetyFilterNode(Node):
     
     def obs_stat_cb(self, msg: MarkerArray):
         self.obs_stat_current = msg
+
+    def goal_cb(self, msg: PoseStamped):
+        self.goal_current = msg
+
+    def routing_cb(self, msg: PathMsg):
+        self.goal_routing = msg
 
 
     # ---- TODO(Task 1.7): the timer callback ----
@@ -157,7 +231,7 @@ class SafetyFilterNode(Node):
         if self.teleop_current == None:
             return
         else:
-            command = self.safety_filter(self.teleop_current, self.odom_current, self.obs_stat_current)
+            command = self.safety_filter(self.teleop_current, self.odom_current, self.obs_stat_current, self.goal_current, self.goal_routing)
             if command != None:
                 command.header.stamp = self.get_clock().now().to_msg()
                 self.pub.publish(command)
@@ -175,7 +249,11 @@ class SafetyFilterNode(Node):
     # get out of the way.
     # =========================================================================
 
-    def safety_filter(self, teleop, odom, obstacles):
+    # values to keep track of the previous control command (TODO: make accessible in safety_filter())
+    prev_state = None #[x, y, v, psi, delta]
+    prev_u = np.zeros(3) # [accel, steer, t]
+
+    def safety_filter(self, teleop, odom, obstacles, goal, routing):
         """
         Args
         ----
@@ -213,7 +291,130 @@ class SafetyFilterNode(Node):
             Return None to skip publishing this tick.
         """
         # ---- TODO(Task 2): replace this passthrough ----
-        return teleop
+
+# Information about the /Routing/Path topic: (run "ros2 interface show nav_msgs/msg/Path" in another terminal that's inside container while sim running)
+# # An array of poses that represents a Path for a robot to follow.
+
+# # Indicates the frame_id of the path.
+# std_msgs/Header header
+
+# # Array of poses to follow.
+# geometry_msgs/PoseStamped[] poses
+
+# I think we can use poses[] to find the goal points. This is the straight line path the robot should follow
+
+
+#         # This code is copied and then modified from traj_planner_example in order to estimate the current state
+#         # check if there is new state available
+#         u_queue = queue.Queue()
+
+#         # initialize the control command
+#         accel = -5.0
+#         steer = 0.0
+#         state_cur = None
+#         policy = self.policy_buffer.readFromRT()
+            
+#         # take the latency of publish into the account
+#         if self.simulation:
+#             t_act = self.get_clock().now().nanoseconds * 1e-9
+#         else:
+#             self.update_lock.acquire()
+#             t_act = (self.get_clock().now().nanoseconds * 1e-9) + self.latency 
+#             self.update_lock.release()
+        
+#         if odom:
+#             slam_time = odom.header.stamp
+#             t_slam = slam_time.sec +  slam_time.nanosec * 1e-9
+            
+#             u = np.zeros(3)
+#             u[-1] = t_slam
+#             while not u_queue.empty() and u_queue.queue[0][-1] < t_slam:
+#                 u = u_queue.get() # remove old control commands
+            
+#             # get the state from the odometry message
+#             q = [odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, 
+#                     odom.pose.pose.orientation.z, odom.pose.pose.orientation.w]
+#             # get the heading angle from the quaternion
+#             psi = R.from_quat(q).as_euler('xyz', degrees=False)[-1]
+                
+#             state_cur = np.array([
+#                         odom.pose.pose.position.x,
+#                         odom.pose.pose.position.y,
+#                         odom.twist.twist.linear.x,
+#                         psi,
+#                         u[1]
+#                     ])
+               
+#             # predict the current state use past control command
+#             for i in range(u_queue.qsize()):
+#                 u_next = u_queue.queue[i]
+#                 dt = u_next[-1] - u[-1]
+#                 state_cur = dyn_step(state_cur, u, dt)
+#                 u = u_next
+                    
+#             # predict the cur state with the most recent control command
+#             state_cur = dyn_step(state_cur, u, t_act - u[-1])
+                
+#             # update the state buffer for the planning thread (can prob take this out bc not using planning thread)
+#             plan_state = np.append(state_cur, t_act)
+#             self.plan_state_buffer.writeFromNonRT(plan_state)
+    
+#         # if there is no new state available, we do one step forward integration to predict the state
+#         elif prev_state is not None:
+#             t_prev = prev_u[-1]
+#             dt = t_act - t_prev
+#             # predict the state using the last control command is executed
+#             state_cur = dyn_step(prev_state, prev_u, dt)
+
+# # END COPIED CODE
+
+        # This is a VERY rough outline of what we should be doing for the user ILQR trajectory without the overriding safety ILQR
+        # It's based on calvin's recommendations, but def won't run and will need some debugging
+        # the first step of debugging is done, no errors in the code show up, but the car has the weirdest behavior
+        # if you set a goal and press on the acceleration for long enough, the car won't move at first and then run away from the screen
+
+        # time_steps = 40 # Number of time steps in the ILQR (for now)
+        # control_dim = 2
+
+        # # Using /Routing/Path to set goal points
+        # if goal is not None:
+        #     x_goal, y_goal = goal.pose.position.x, goal.pose.position.y
+
+        # Get current state and control actions from ROS topics
+        intial_yaw = yaw_from_quat(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w)
+        initial_x = odom.pose.pose.position.x
+        initial_y = odom.pose.pose.position.y
+        initial_v = odom.twist.twist.linear.x
+        initial_steering_angle = teleop.drive.steering_angle
+        initial_acc = teleop.drive.acceleration
+
+        # Create np arrays for the state and control
+        initial_state = np.array([initial_x, initial_y, initial_v, intial_yaw, initial_steering_angle])
+        initial_control = np.array([initial_acc, initial_steering_angle]) 
+
+        # Roll out user trajectory for 10 time steps
+        state_after_user_control = initial_state 
+        for i in range(10):
+            state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
+
+        # Set up ILQR planner (this line is taken from traj_planner_example.py)
+        self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file)
+        user_cost = 0 #just for the test
+        if routing:
+            user_ref_path = path_callback(routing) # Centerline routing path
+            if user_ref_path :
+                self.planner.update_ref_path(user_ref_path) # Update reference path
+                user_plan = self.planner.plan(state_after_user_control, None) # Plan with ILQR based on 10 steps of user control
+                # Get cost of planned trajectory
+                path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
+                user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
+                print('cost :', user_cost)
+
+        # If below (very arbitary) threshold, publish user control
+        if user_cost < 2000:
+            return teleop
+        else: # Fix later
+            return None
 
 
 def main(args=None):
