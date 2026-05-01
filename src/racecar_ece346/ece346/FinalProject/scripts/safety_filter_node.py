@@ -404,7 +404,7 @@ class SafetyFilterNode(Node):
         initial_y = odom.pose.pose.position.y
         initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
         initial_steering_angle = teleop.drive.steering_angle
-        # initial_acc = teleop.drive.acceleration - teleop doesnt send accelaration
+        
 
         # Create np arrays for the state and control
         initial_state = np.array([initial_x, initial_y, initial_v, intial_yaw, initial_steering_angle])
@@ -425,8 +425,8 @@ class SafetyFilterNode(Node):
         for i in range(10):
             target_speed = teleop.drive.speed        
             target_steering = teleop.drive.steering_angle
-            accel = (target_speed - state_after_user_control[2]) / self.dt # we have to find the acceleration oursekves
-            initial_control = np.array([accel, target_steering])   
+            target_acc = teleop.drive.acceleration
+            initial_control = np.array([target_acc, target_steering])   
             state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
 
         # Set up ILQR planner (this line is taken from traj_planner_example.py)
@@ -473,21 +473,23 @@ class SafetyFilterNode(Node):
             
             # ILQR controls use [accel, steering_rate].
             # /drive needs [speed, steering_angle].
-            safe_Control = safe_plan['controls'][:, 0]
+            safe_control = safe_plan['controls'][:, 0]
             safe_accel = safe_control[0]
             safe_steering_rate = safe_control[1]
 
             safe_speed = initial_state[2] + safe_accel * self.planner.dt    # convert from acc to speed
             safe_steering_angle = initial_state[4] + safe_steering_rate * self.planner.dt # convert from steering rate to angle
 
-            # Should we clamp the angle as well??
+            # Should we clamp the angle as well?? - Yep
             safe_speed = max(0.0, min(1.0, safe_speed))
+            safe_steering_angle = max(-0.34, min(0.34, safe_steering_angle))
 
             safe_command = AckermannDriveStamped()
+            safe_command.header.stamp = self.get_clock().now().to_msg()
             safe_command.drive.speed = safe_speed
             safe_command.drive.steering_angle = safe_steering_angle
 
-            return None
+            return safe_command
 
 
 def main(args=None):
