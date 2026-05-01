@@ -46,6 +46,7 @@ import math
 import queue
 import numpy as np
 import os
+import time
 
 import rclpy
 from rclpy.node import Node
@@ -63,7 +64,6 @@ from ament_index_python.packages import get_package_share_directory
 
 from ece346.FinalProject.ILQR_Example.ref_path import RefPath
 from ece346.FinalProject.ILQR_Example.ilqr import ILQR
-from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
 
 # from ece346.FinalProject.config import config
 
@@ -160,7 +160,6 @@ class SafetyFilterNode(Node):
         self.declare_parameter('routing_path_topic', '/Routing/Path')
 
         self.declare_parameter('projection_dt')
-        self.declare_parameter('total_soft_threshold') # added to make it easy to change
 
         # ---- TODO(Task 1.2): read parameter values ----
 
@@ -175,22 +174,13 @@ class SafetyFilterNode(Node):
         self.publish_rate = self.get_parameter('publish_rate').value
 
         self.dt = self.get_parameter('projection_dt').value
-
-        self.total_soft_threshold = self.get_parameter('total_soft_threshold').value
-        self.safe_release_threshold = 0.5 * self.total_soft_threshold               # ==================== Do you wanna use something like this not to make the car jittery?
-        self.safe_trigger = False # not 1 or 0 as i initially said in the notes
+        
 
         self.teleop_current = None
         self.odom_current = None
         self.obs_stat_current = None
         self.goal_current = None
         self.goal_routing = None
-
-        self.obstacle_list = []
-
-        self.ref_path = None
-
-        self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file)
 
         # ---- TODO(Task 1.3): create subscribers ----
         self.create_subscription(AckermannDriveStamped, teleop_topic1, self.teleop_cb, 1)
@@ -214,6 +204,10 @@ class SafetyFilterNode(Node):
             f"+ {obs_topic} + {goal_topic} -> {drive_topic}"
         )
 
+        print("Initializing ILQR")
+        self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file)
+
+
     # ---- TODO(Task 1.6): implement callbacks ----
     def teleop_cb(self, msg: AckermannDriveStamped):
         self.teleop_current = msg
@@ -223,12 +217,6 @@ class SafetyFilterNode(Node):
     
     def obs_stat_cb(self, msg: MarkerArray):
         self.obs_stat_current = msg
-        # self.obstacle_list = []
-
-        # # like in traj_planner_example obstacle callback
-        # for obs in msg.markers:
-        #     _, vertices = get_obstacle_vertices(obs)
-        #     self.obstacle_list.append(vertices)
 
     def goal_cb(self, msg: PoseStamped):
         self.goal_current = msg
@@ -249,7 +237,7 @@ class SafetyFilterNode(Node):
             return
         else:
             command = self.safety_filter(self.teleop_current, self.odom_current, self.obs_stat_current, self.goal_current, self.goal_routing)
-            if command != None:
+            if command is not None:
                 command.header.stamp = self.get_clock().now().to_msg()
                 self.pub.publish(command)
             return
@@ -269,6 +257,32 @@ class SafetyFilterNode(Node):
     # values to keep track of the previous control command (TODO: make accessible in safety_filter())
     prev_state = None #[x, y, v, psi, delta]
     prev_u = np.zeros(3) # [accel, steer, t]
+
+    @staticmethod
+    def compute_control(x, x_ref, u_ref, K_closed_loop):
+        '''
+        Given the current state, reference trajectory, control command 
+        and closed loop gain, compute the control command
+        
+        Args:
+            x: np.ndarray, [dim_x] current state
+            x_ref: np.ndarray, [dim_x] reference trajectory
+            u_ref: np.ndarray, [dim_u] reference control command
+            K_closed_loop: np.ndarray, [dim_u, dim_x] closed loop gain
+
+        Returns:
+            accel: float, acceleration command [m/s^2]
+            steer_rate: float, steering rate command [rad/s]
+        '''
+
+        dx = x - x_ref
+        dx[3] = np.mod(dx[3] + np.pi, 2 * np.pi) - np.pi
+        u = u_ref + K_closed_loop @ dx
+        accel = u[0]
+        steer_rate = u[1]
+
+        return accel, steer_rate
+    
 
 
     def safety_filter(self, teleop, odom, obstacles, goal, routing):
@@ -402,130 +416,109 @@ class SafetyFilterNode(Node):
         intial_yaw = yaw_from_quat(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w)
         initial_x = odom.pose.pose.position.x
         initial_y = odom.pose.pose.position.y
-        initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
+        initial_v = odom.twist.twist.linear.x
         initial_steering_angle = teleop.drive.steering_angle
-        
-        
+        initial_acc = teleop.drive.acceleration
 
         # Create np arrays for the state and control
         initial_state = np.array([initial_x, initial_y, initial_v, intial_yaw, initial_steering_angle])
-        #initial_control = np.array([initial_acc, initial_steering_angle]) 
-        # dyn_step uses u = [accel, steering_angle].
+        initial_control = np.array([initial_acc, initial_steering_angle])
 
-        # From bicyle5d
-        # State: [x, y, v, psi, delta]
-		# 	Control: [accel, omega]
-		# 	dx_k = v_k cos(psi_k)
-		# 	dy_k = v_k sin(psi_k)
-		# 	dv_k = accel_k
-		# 	dpsi_k = v_k tan(delta_k) / L
-		# 	ddelta_k = omega_k
+        # DEBUGGING - try to calculate current state based on delayed state information
         
+
         # Roll out user trajectory for 10 time steps
-        state_after_user_control = initial_state.copy() # do not mutate the state 
+        state_after_user_control = initial_state 
         for i in range(10):
-            target_speed = teleop.drive.speed        
-            target_steering = teleop.drive.steering_angle
-            #target_acc = teleop.drive.acceleration
-            target_acc = (target_speed- state_after_user_control[2])/self.dt
-            initial_control = np.array([target_acc, target_steering])   
             state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
 
-
-        # Update obstacles
-
-        obstacle_list = []
-
-        # like in traj_planner_example obstacle callback
-        for obs in obstacles.markers:
-            _, vertices = get_obstacle_vertices(obs)
-            obstacle_list.append(vertices)
-        
         # Set up ILQR planner (this line is taken from traj_planner_example.py)
-        #self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file) - declared up, it has be initialez once for the class
-        #user_cost = 0 #just for the test
-        user_cost = float("inf")
+        user_cost = 0 #just for the test
+        print("is routing working??? ", (routing is not None))
         if routing is not None:
             user_ref_path = path_callback(routing) # Centerline routing path
-            self.planner.update_ref_path(user_ref_path)
-            self.planner.update_obstacles(obstacle_list) # We didnt add obstacles, do this with the obstacles from the topic
+            print("is there a user ref path??? ", (user_ref_path is not None))
+            if user_ref_path:
+                start_time = time.time()
 
-            user_plan = self.planner.plan(state_after_user_control, None)
-
-            plan_status = user_plan['status']
-            if plan_status == -1:
-                print("User planning failed")
-                return None #TODO: maybe return something else?
-
-            # if user_ref_path :
-            #     self.planner.update_ref_path(user_ref_path) # Update reference path
-            #     user_plan = self.planner.plan(state_after_user_control, None) # Plan with ILQR based on 10 steps of user control
-            #     # Get cost of planned trajectory
-            #     path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
-            #     user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
-            #     print('cost :', user_cost)
-
-            # Did ILQR actually return a plan from the future state?
-            if user_plan is not None:
+                self.planner.update_ref_path(user_ref_path) # Update reference path
+                user_plan = self.planner.plan(state_after_user_control, None) # Plan with ILQR based on 10 steps of user control
+                
+                plan_status = user_plan['status']
+                if plan_status == -1:
+                    print("user planning failed")
+                    return None #TODO: maybe return safe action or brake instead
+                
                 # Get cost of planned trajectory
                 path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
                 user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
-
-                user_cost = float(user_cost) #just in case for the comparison, even if i think it already returns a float
-                #print('cost :', user_cost)
+                print('cost of user plan:', user_cost)
+                end_time = time.time()
+                print(f"Time spent planning user: {end_time - start_time}")
 
         # If below (very arbitary) threshold, publish user control
-        if user_cost < 100:
-            #print("Running teleop because user plan cost is low")
+        if user_cost < 200:
+            print("returning teleop message")
             return teleop
         else: # Fix later
-            # If the future plan is too expensive, use safety ILQR from the current state
-
+            # compute safe trajectory
+            safe_cost = 0
             if routing is not None:
-                self.planner.update_ref_path(user_ref_path)
-                self.planner.update_obstacles(obstacle_list)
-                safe_plan = self.planner.plan(initial_state, None)
+                # user_ref_path = path_callback(routing) # Centerline routing path
+                if user_ref_path:
+                    start_time = time.time()
+                    # self.planner.update_ref_path(user_ref_path) # Update reference path
+                    safe_plan = self.planner.plan(initial_state, None) # Plan safe trajectory with ILQR from current state
 
-                plan_status = safe_plan['status']
-                if plan_status == -1:
-                    print("safe planning failed")
-                    return None #TODO: maybe return something else?
+                    plan_status = safe_plan['status']
+                    if plan_status == -1:
+                        print("safe planning failed")
+                        return None #TODO: maybe return something else?
 
-                # If ILQR cannot find a safety plan, brake - or something else, we can change this
-                if safe_plan is None:
-                    safe_command = AckermannDriveStamped()
-                    safe_command.drive.speed = 0.0
-                    safe_command.drive.steering_angle = 0.0
-                    return safe_command
-                
-                # ILQR controls use [accel, steering_rate].
-                # /drive needs [speed, steering_angle].
-                safe_control = safe_plan['controls'][:, 0]
-                safe_accel = safe_control[0]
-                safe_steering_rate = safe_control[1]
+                    # Get cost of planned trajectory
+                    path_refs, obs_refs = self.planner.get_references(safe_plan['trajectory'])
+                    safe_cost = self.planner.cost.get_traj_cost(safe_plan['trajectory'], safe_plan['controls'], path_refs, obs_refs)
+                    print('cost of safe plan:', safe_cost)
+                    end_time = time.time()
+                    print(f"Time spent planning safe plan: {end_time - start_time}")
 
-                safe_speed = initial_state[2] + safe_accel * self.planner.dt    # convert from acc to speed
-                safe_steering_angle = initial_state[4] + safe_steering_rate * self.planner.dt # convert from steering rate to angle
-                #print(f"Steering rate {safe_steering_angle}. Initial steering angle: {initial_state[4]}")
+            # evaluate safe cost
+            if safe_cost < 200: #arbitrary threshold
+                accel = 0
+                steer = 0
+                print("Safe plan[traj][:,0]", safe_plan['trajectory'][:,0])
+                # if safe_plan['trajectory'][:,0] is not None: #TODO - if trajectory[:,0] is where the car is now then this should be [:,1]
+                #     #TODO - change initial state to current estimated state
+                #     accel, steer_rate = self.compute_control(initial_state, safe_plan['trajectory'][:,0], safe_plan['controls'][:,0], safe_plan['K_closed_loop'][:,:,0])
+                #     steer = max(-0.37, min(0.37, self.prev_u[1] + steer_rate*self.dt))
 
-                # Should we clamp the angle as well?? - Yep
-                safe_speed = max(0.0, min(1.0, safe_speed))
+                print("Accel", safe_plan['controls'][0,0])
+                print("Steer", safe_plan['controls'][1,0])
+                # print("Shape of safe plan", safe_plan['controls'].shape())
+                print("Controls:", safe_plan['controls'])
+                safe_accel = safe_plan['controls'][0,0]
+                steer = safe_plan['controls'][1,0]
+                safe_steering_angle = initial_state[4] + steer * self.planner.dt # convert from steering rate to angle
+
                 safe_steering_angle = max(-0.34, min(0.34, safe_steering_angle))
 
-                safe_command = AckermannDriveStamped()
-                safe_command.header.stamp = self.get_clock().now().to_msg()
-                safe_command.drive.speed = safe_speed
-                safe_command.drive.steering_angle = safe_steering_angle
-                safe_command.drive.acceleration = float(safe_accel)
 
-                #print("Publishing safe command")
-                #print(f"Safe command: Drive speed: {safe_speed}. Steering angle: {safe_steering_angle}")
+                msg = AckermannDriveStamped()
+                msg.header.stamp = self.get_clock().now().to_msg()
+                msg.drive.steering_angle = safe_steering_angle
+                msg.drive.acceleration = safe_accel
 
-                return safe_command
-      
-            else: 
-                #print("Running teleop because routing is None")
-                return teleop
+                print("returning safe ILQR message")
+                return msg
+
+            # if the "safety" trajectory also has a very high cost, brake
+            msg = AckermannDriveStamped()
+            msg.header.stamp = self.get_clock().now().to_msg()
+            msg.drive.steering_angle = 0.0
+            msg.drive.acceleration = - teleop.drive.speed #TODO - this may need to be clamped if speed can be higher than max acceleration
+            print("returning backup braking message")
+            print("")
+            return msg # TODO: this should be the ultimate backup - I think that would be to brake
 
 
 def main(args=None):
