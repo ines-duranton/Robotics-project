@@ -65,6 +65,10 @@ from ece346.FinalProject.ILQR_Example.ref_path import RefPath
 from ece346.FinalProject.ILQR_Example.ilqr import ILQR
 from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
 
+from ece346.FinalProject.ILQR_Example.cost.state_cost import StateCost
+from ece346.FinalProject.ILQR_Example.cost.control_cost import ControlCost
+from ece346.FinalProject.ILQR_Example.cost.obstacle_cost import ObstacleCost
+
 # from ece346.FinalProject.config import config
 
 
@@ -321,79 +325,6 @@ class SafetyFilterNode(Node):
 
 # I think we can use poses[] to find the goal points. This is the straight line path the robot should follow
 
-
-#         # This code is copied and then modified from traj_planner_example in order to estimate the current state
-#         # check if there is new state available
-#         u_queue = queue.Queue()
-
-#         # initialize the control command
-#         accel = -5.0
-#         steer = 0.0
-#         state_cur = None
-#         policy = self.policy_buffer.readFromRT()
-            
-#         # take the latency of publish into the account
-#         if self.simulation:
-#             t_act = self.get_clock().now().nanoseconds * 1e-9
-#         else:
-#             self.update_lock.acquire()
-#             t_act = (self.get_clock().now().nanoseconds * 1e-9) + self.latency 
-#             self.update_lock.release()
-        
-#         if odom:
-#             slam_time = odom.header.stamp
-#             t_slam = slam_time.sec +  slam_time.nanosec * 1e-9
-            
-#             u = np.zeros(3)
-#             u[-1] = t_slam
-#             while not u_queue.empty() and u_queue.queue[0][-1] < t_slam:
-#                 u = u_queue.get() # remove old control commands
-            
-#             # get the state from the odometry message
-#             q = [odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, 
-#                     odom.pose.pose.orientation.z, odom.pose.pose.orientation.w]
-#             # get the heading angle from the quaternion
-#             psi = R.from_quat(q).as_euler('xyz', degrees=False)[-1]
-                
-#             state_cur = np.array([
-#                         odom.pose.pose.position.x,
-#                         odom.pose.pose.position.y,
-#                         odom.twist.twist.linear.x,
-#                         psi,
-#                         u[1]
-#                     ])
-               
-#             # predict the current state use past control command
-#             for i in range(u_queue.qsize()):
-#                 u_next = u_queue.queue[i]
-#                 dt = u_next[-1] - u[-1]
-#                 state_cur = dyn_step(state_cur, u, dt)
-#                 u = u_next
-                    
-#             # predict the cur state with the most recent control command
-#             state_cur = dyn_step(state_cur, u, t_act - u[-1])
-                
-#             # update the state buffer for the planning thread (can prob take this out bc not using planning thread)
-#             plan_state = np.append(state_cur, t_act)
-#             self.plan_state_buffer.writeFromNonRT(plan_state)
-    
-#         # if there is no new state available, we do one step forward integration to predict the state
-#         elif prev_state is not None:
-#             t_prev = prev_u[-1]
-#             dt = t_act - t_prev
-#             # predict the state using the last control command is executed
-#             state_cur = dyn_step(prev_state, prev_u, dt)
-
-# # END COPIED CODE
-
-        # This is a VERY rough outline of what we should be doing for the user ILQR trajectory without the overriding safety ILQR
-        # It's based on calvin's recommendations, but def won't run and will need some debugging
-        # the first step of debugging is done, no errors in the code show up, but the car has the weirdest behavior
-        # if you set a goal and press on the acceleration for long enough, the car won't move at first and then run away from the screen
-
-        # time_steps = 40 # Number of time steps in the ILQR (for now)
-        # control_dim = 2
-
         # # Using /Routing/Path to set goal points
         # if goal is not None:
         #     x_goal, y_goal = goal.pose.position.x, goal.pose.position.y
@@ -404,8 +335,6 @@ class SafetyFilterNode(Node):
         initial_y = odom.pose.pose.position.y
         initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
         initial_steering_angle = teleop.drive.steering_angle
-        
-        
 
         # Create np arrays for the state and control
         initial_state = np.array([initial_x, initial_y, initial_v, intial_yaw, initial_steering_angle])
@@ -448,7 +377,7 @@ class SafetyFilterNode(Node):
         if routing is not None:
             user_ref_path = path_callback(routing) # Centerline routing path
             self.planner.update_ref_path(user_ref_path)
-            self.planner.update_obstacles(obstacle_list) # We didnt add obstacles, do this with the obstacles from the topic
+            self.planner.update_obstacles(obstacle_list)
 
             user_plan = self.planner.plan(state_after_user_control, None)
 
@@ -470,15 +399,17 @@ class SafetyFilterNode(Node):
                 # Get cost of planned trajectory
                 path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
                 user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
+                user_state_cost = self.planner.cost.control_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
+                user_obstacle_cost = self.planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
 
                 user_cost = float(user_cost) #just in case for the comparison, even if i think it already returns a float
                 #print('cost :', user_cost)
 
         # If below (very arbitary) threshold, publish user control
-        if user_cost < 100:
+        if user_cost < 100: #and user_state_cost < 45 and user_obstacle_cost < 50:
             #print("Running teleop because user plan cost is low")
             return teleop
-        else: # Fix later
+        else:
             # If the future plan is too expensive, use safety ILQR from the current state
 
             if routing is not None:

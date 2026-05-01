@@ -109,7 +109,7 @@ lane_boundary_b: 1.5 #2.0 # parameter for ExpLinear Cost
 ctrl_cost_type: 'quadratic' # 'quadratic' or 'huber'
 # those value should not be too small
 ctrl_cost_accel_weight: 1.0
-ctrl_cost_steer_weight: 0.1
+ctrl_cost_steer_weight: 0.01
 ctrl_cost_accel_huber_delta: 1.0 # huber loss delta
 ctrl_cost_steer_huber_delta: 1.0 # huber loss delta
 
