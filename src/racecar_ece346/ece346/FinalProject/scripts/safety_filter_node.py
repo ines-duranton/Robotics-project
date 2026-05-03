@@ -181,7 +181,7 @@ class SafetyFilterNode(Node):
         self.declare_parameter('projection_dt')
         self.declare_parameter('total_soft_threshold') # added to make it easy to change
 
-        self.virtual_goals = [(5.4, 5.3), (0.65, 5.61), (0.72, 0.53), (5.47, 0.59)]
+        self.virtual_goals = [(5.4, 5.3), (0.65, 5.61), (2.8, 0.6), (2.8, 5.6), (0.72, 0.53), (5.47, 0.59)]
         self.virtual_goal_idx = 0
         self.virtual_goal_radius = 3
 
@@ -225,11 +225,12 @@ class SafetyFilterNode(Node):
         self.create_subscription(AckermannDriveStamped, teleop_topic1, self.teleop_cb, 1)
         self.create_subscription(Odometry, odom_topic, self.odom_cb, 1)
         self.create_subscription(MarkerArray, obs_topic, self.obs_stat_cb, 1)
-        self.create_subscription(PoseStamped, goal_topic, self.goal_cb, 1)
+        #self.create_subscription(PoseStamped, goal_topic, self.goal_cb, 1)
         self.create_subscription(PathMsg, routing_topic, self.routing_cb, 1)
 
         # ---- TODO(Task 1.4): create the publisher ----
         self.pub = self.create_publisher(AckermannDriveStamped, drive_topic, 1)
+        self.pub_goal = self.create_publisher(PoseStamped, goal_topic, 1)
 
         # ---- TODO(Task 1.5): create a timer at publish_rate Hz ----
         self.create_timer(1/self.publish_rate, self._publish_filtered)
@@ -360,16 +361,18 @@ class SafetyFilterNode(Node):
         # # Using /Routing/Path to set goal points
         # if goal is not None:
         #     x_goal, y_goal = goal.pose.position.x, goal.pose.position.y
-
-        
-        if teleop is None:
-            return None
-
-        if odom is None:
+        if teleop is None or odom is None or obstacles is None:
             return teleop
         
-        if routing is None:
-            return teleop
+        # if teleop is None:
+        #     return None
+
+        # if odom is None:
+        #     return teleop
+        
+        # if routing is None:
+        #     return teleop
+
         # Get current state and control actions from ROS topics
         initial_yaw = yaw_from_quat(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w)
         initial_x = odom.pose.pose.position.x
@@ -377,45 +380,26 @@ class SafetyFilterNode(Node):
         initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
         initial_steering_angle = self.last_steering_angle #teleop.drive.steering_angle
 
-        #updated to not select goal points manually
-        # goal_x, goal_y = self.virtual_goals[self.virtual_goal_idx]
-        # dist_to_goal = np.sqrt((goal_x - initial_x)**2 + (goal_y - initial_y)**2)
-
-        # if dist_to_goal < self.virtual_goal_radius:
-        #     self.virtual_goal_idx = (self.virtual_goal_idx + 1) % len(self.virtual_goals)
-        #     goal_x, goal_y = self.virtual_goals[self.virtual_goal_idx]
-        # print('goal is :', goal_x, goal_y)
-        # try:
-        #     centerline = self.user_route.get_shortest_path([initial_x, initial_y], [goal_x, goal_y])
-
-        #     x = centerline[:, 0]
-        #     y = centerline[:, 1]
-                
-        #     width_left = 0.25
-        #     width_right = 0.25
-        #     speed_limit = 0.30
-
-        #     user_ref_path = RefPath(np.array([x, y]), width_left, width_right, speed_limit, loop=False)
+        car_xy = np.array([initial_x, initial_y])
 
 
-        # except Exception as e:
-        #     self.get_logger().warn(f"Virtual RefPath failed: {e}")
-        #     return teleop
+        goal_selected = self.virtual_goals[int(np.argmax(np.linalg.norm(self.virtual_goals - car_xy, axis=1)))]
 
-        try:
-            centerline = self.user_route.get_shortest_path([initial_x, initial_y, initial_yaw], None, True, False, False, True, 12)
-            centerline = np.asarray(centerline, dtype=float)
+        goal_msg = PoseStamped()
+        goal_msg.header.stamp = self.get_clock().now().to_msg()
+        goal_msg.header.frame_id = "map"
+        goal_msg.pose.position.x = goal_selected[0]
+        goal_msg.pose.position.y = goal_selected[1]
+        
+        #print(f"Published {goal_selected[0]}, {goal_selected[1]} goal")
+        self.pub_goal.publish(goal_msg)
 
-            if centerline.ndim != 2 or centerline.shape[0] < 4:
-                self.get_logger().warn("Outer-loop path is empty, invalid, or too short.")
-                return teleop
+        user_ref_path = self.ref_path
 
-            user_ref_path = RefPath(np.array([centerline[:, 0], centerline[:, 1]]), centerline[:, 2], centerline[:, 3], centerline[:, 4], loop=False)
 
-        except Exception as e:
-            self.get_logger().warn(f"Outer-loop RefPath failed: {e}")
+        if routing is None:
             return teleop
-
+        
         # Create np arrays for the state and control
         initial_state = np.array([initial_x, initial_y, initial_v, initial_yaw, initial_steering_angle])
         #initial_control = np.array([initial_acc, initial_steering_angle]) 
@@ -424,15 +408,6 @@ class SafetyFilterNode(Node):
         # start_pose = goal.pose
         # start_pose.position.x, start_pose.position.y= state_after_user_control[0], state_after_user_control[1]
         # reference_path = self.user_route.get_shortest_path(start_pose, goal.pose)
-
-        # From bicyle5d
-        # State: [x, y, v, psi, delta]
-		# 	Control: [accel, omega]routing
-		# 	dx_k = v_k cos(psi_k)
-		# 	dy_k = v_k sin(psi_k)
-		# 	dv_k = accel_k
-		# 	dpsi_k = v_k tan(delta_k) / L
-		# 	ddelta_k = omega_k
         
         # Update obstacles
 
@@ -461,8 +436,11 @@ class SafetyFilterNode(Node):
             target_steering = teleop.drive.steering_angle
             #target_acc = teleop.drive.acceleration
             target_acc = (target_speed- state_after_user_control[2])/self.dt
-            initial_control = np.array([target_acc, target_steering])
 
+            #target_acc = np.clip(target_acc, -1.0, 1.0)
+            #target_steering = np.clip(target_steering, -0.34, 0.34)  
+                     
+            initial_control = np.array([target_acc, target_steering])
             user_controls[:, i] = initial_control
             state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
             user_trajectory[:, i + 1] = state_after_user_control
@@ -483,14 +461,22 @@ class SafetyFilterNode(Node):
         self.planner.update_obstacles(obstacle_list)
         user_ref_path = path_callback(routing) # Centerline routing path
         self.planner.update_ref_path(user_ref_path)
+
+        # if not np.all(np.isfinite(state_after_user_control)):
+        #     self.get_logger().warn("State has NaN/Inf, skipping iLQR")
+        #     return teleop
+        # if not np.all(np.isfinite(user_trajectory)):
+        #     return teleop
         
         user_plan = self.planner.plan(state_after_user_control, None)
+        if user_plan is None:
+            return teleop
 
         plan_status = user_plan['status']
         if plan_status == -1:
             print("User planning failed")
             return None #TODO: maybe return something else?
-            
+
         # Did ILQR actually return a plan from the future state?
         if user_plan is not None:
             # Get cost of planned trajectory
@@ -500,13 +486,13 @@ class SafetyFilterNode(Node):
             recovery_obstacle_cost = self.planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
 
         # If below (very arbitary) threshold, publish user control
-        if user_obstacle_cost > 230:
+        if user_obstacle_cost > 220:
             brake_command = AckermannDriveStamped()
             brake_command.drive.speed = 0.0
             brake_command.drive.steering_angle = 0.0
             return brake_command
         
-        elif user_cost < 90 and recovery_cost < 90: #user_state_cost < 30 and user_obstacle_cost < 40:
+        elif user_cost < 70 and recovery_cost < 70: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
@@ -547,10 +533,10 @@ class SafetyFilterNode(Node):
             safe_steering_angle = max(-0.34, min(0.34, safe_steering_angle))
 
             safe_command = AckermannDriveStamped()
-            safe_command.header.stamp = self.get_clock().now().to_msg()
+            # safe_command.header.stamp = self.get_clock().now().to_msg()
             safe_command.drive.speed = safe_speed
             safe_command.drive.steering_angle = safe_steering_angle
-            safe_command.drive.acceleration = float(safe_accel)
+            # safe_command.drive.acceleration = float(safe_accel)
 
             #print("Publishing safe command")
             #print(f"Safe command: Drive speed: {safe_speed}. Steering angle: {safe_steering_angle}")

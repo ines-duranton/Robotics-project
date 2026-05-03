@@ -135,7 +135,7 @@ class Routing(Node):
         goal_yaw = R.from_quat(q).as_euler('xyz', degrees=False)[-1]
         goal_pose = np.array([goal_x, goal_y, goal_yaw])
 
-        self.get_logger().info(f"Planning route from [{start_x:.2f}, {start_y:.2f}, {start_yaw:.2f}] to [{goal_x:.2f}, {goal_y:.2f}, {goal_yaw:.2f}]")
+        #self.get_logger().info(f"Planning route from [{start_x:.2f}, {start_y:.2f}, {start_yaw:.2f}] to [{goal_x:.2f}, {goal_y:.2f}, {goal_yaw:.2f}]")
 
         planned_path, plannedL_path, plannedR_path = self.plan_route(start_pose, goal_pose, True, self.goal_with_heading, goal_msg.header)
 
