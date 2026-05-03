@@ -61,8 +61,6 @@ from scipy.spatial.transform import Rotation as R
 
 from ament_index_python.packages import get_package_share_directory
 
-from pathlib import Path as FsPath
-
 from ece346.FinalProject.ILQR_Example.ref_path import RefPath
 from ece346.FinalProject.ILQR_Example.ilqr import ILQR
 from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
@@ -70,8 +68,6 @@ from ece346.Lab3.scripts.utils.static_obstacle import get_obstacle_vertices
 from ece346.FinalProject.ILQR_Example.cost.state_cost import StateCost
 from ece346.FinalProject.ILQR_Example.cost.control_cost import ControlCost
 from ece346.FinalProject.ILQR_Example.cost.obstacle_cost import ObstacleCost
-
-from src.racecar_routing.routing.routing.lanelet_wrapper import LaneletWrapper
 
 # from ece346.FinalProject.config import config
 
@@ -163,27 +159,12 @@ class SafetyFilterNode(Node):
 
         self.declare_parameter('ilqr_params_file', os.path.join(self.package, "config", "final_truck_ilqr.yaml"))
 
-        try:
-            share_dir = FsPath(get_package_share_directory('racecar_routing'))
-        except Exception as e:
-            self.get_logger().error(f"Could not locate package 'Routing' share dir: {e}")
-            share_dir = FsPath('.')  # dummy to avoid NameError
-        
-        default_map = share_dir / 'maps' / 'track.osm'
-        
-        self.declare_parameter('map_file', str(default_map))
-        self.declare_parameter('lane_change_cost', 0)
-
         # For routing path
         self.declare_parameter('goal_topic', '/goal_pose')
         self.declare_parameter('routing_path_topic', '/Routing/Path')
 
         self.declare_parameter('projection_dt')
         self.declare_parameter('total_soft_threshold') # added to make it easy to change
-
-        self.virtual_goals = [(5.4, 5.3), (0.65, 5.61), (0.72, 0.53), (5.47, 0.59)]
-        self.virtual_goal_idx = 0
-        self.virtual_goal_radius = 3
 
         # ---- TODO(Task 1.2): read parameter values ----
 
@@ -199,14 +180,9 @@ class SafetyFilterNode(Node):
 
         self.dt = self.get_parameter('projection_dt').value
 
-        map_file = self.get_parameter('map_file').value
-        self.lane_change_cost = self.get_parameter('lane_change_cost').value
-
         self.total_soft_threshold = self.get_parameter('total_soft_threshold').value
         self.safe_release_threshold = 0.5 * self.total_soft_threshold               # ==================== Do you wanna use something like this not to make the car jittery?
         self.safe_trigger = False # not 1 or 0 as i initially said in the notes
-
-        self.last_steering_angle = 0.0 #keep track of the steering angle
 
         self.teleop_current = None
         self.odom_current = None
@@ -218,7 +194,6 @@ class SafetyFilterNode(Node):
 
         self.ref_path = None
 
-        self.user_route = LaneletWrapper(map_file, self)
         self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file)
 
         # ---- TODO(Task 1.3): create subscribers ----
@@ -250,26 +225,20 @@ class SafetyFilterNode(Node):
     def odom_cb(self, msg: Odometry):
         self.odom_current = msg
     
-    #makes obstacles update live and avoids rebuilding the reference path every timer tick
     def obs_stat_cb(self, msg: MarkerArray):
         self.obs_stat_current = msg
-        self.obstacle_list = []
+        # self.obstacle_list = []
 
-        # like in traj_planner_example obstacle callback
-        for obs in msg.markers:
-            _, vertices = get_obstacle_vertices(obs)
-            self.obstacle_list.append(vertices)
+        # # like in traj_planner_example obstacle callback
+        # for obs in msg.markers:
+        #     _, vertices = get_obstacle_vertices(obs)
+        #     self.obstacle_list.append(vertices)
 
     def goal_cb(self, msg: PoseStamped):
         self.goal_current = msg
 
-
     def routing_cb(self, msg: PathMsg):
         self.goal_routing = msg
-        try:
-            self.ref_path = path_callback(msg)
-        except Exception:
-            self.ref_path = None
 
 
     # ---- TODO(Task 1.7): the timer callback ----
@@ -286,7 +255,6 @@ class SafetyFilterNode(Node):
             command = self.safety_filter(self.teleop_current, self.odom_current, self.obs_stat_current, self.goal_current, self.goal_routing)
             if command != None:
                 command.header.stamp = self.get_clock().now().to_msg()
-                self.last_steering_angle = command.drive.steering_angle # added to apply the bicyle model to the last angle state not the joystick request
                 self.pub.publish(command)
             return
 
@@ -346,94 +314,53 @@ class SafetyFilterNode(Node):
         """
         # ---- TODO(Task 2): replace this passthrough ----
 
-        # Information about the /Routing/Path topic: (run "ros2 interface show nav_msgs/msg/Path" in another terminal that's inside container while sim running)
-        # # An array of poses that represents a Path for a robot to follow.
+# Information about the /Routing/Path topic: (run "ros2 interface show nav_msgs/msg/Path" in another terminal that's inside container while sim running)
+# # An array of poses that represents a Path for a robot to follow.
 
-        # # Indicates the frame_id of the path.
-        # std_msgs/Header header
+# # Indicates the frame_id of the path.
+# std_msgs/Header header
 
-        # # Array of poses to follow.
-        # geometry_msgs/PoseStamped[] poses
+# # Array of poses to follow.
+# geometry_msgs/PoseStamped[] poses
 
-        # I think we can use poses[] to find the goal points. This is the straight line path the robot should follow
+# I think we can use poses[] to find the goal points. This is the straight line path the robot should follow
 
         # # Using /Routing/Path to set goal points
         # if goal is not None:
         #     x_goal, y_goal = goal.pose.position.x, goal.pose.position.y
 
-        
-        if teleop is None:
-            return None
-
-        if odom is None:
-            return teleop
-        
-        if routing is None:
-            return teleop
         # Get current state and control actions from ROS topics
-        initial_yaw = yaw_from_quat(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w)
+        intial_yaw = yaw_from_quat(odom.pose.pose.orientation.x, odom.pose.pose.orientation.y, odom.pose.pose.orientation.z, odom.pose.pose.orientation.w)
         initial_x = odom.pose.pose.position.x
         initial_y = odom.pose.pose.position.y
         initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
-        initial_steering_angle = self.last_steering_angle #teleop.drive.steering_angle
-
-        #updated to not select goal points manually
-        # goal_x, goal_y = self.virtual_goals[self.virtual_goal_idx]
-        # dist_to_goal = np.sqrt((goal_x - initial_x)**2 + (goal_y - initial_y)**2)
-
-        # if dist_to_goal < self.virtual_goal_radius:
-        #     self.virtual_goal_idx = (self.virtual_goal_idx + 1) % len(self.virtual_goals)
-        #     goal_x, goal_y = self.virtual_goals[self.virtual_goal_idx]
-        # print('goal is :', goal_x, goal_y)
-        # try:
-        #     centerline = self.user_route.get_shortest_path([initial_x, initial_y], [goal_x, goal_y])
-
-        #     x = centerline[:, 0]
-        #     y = centerline[:, 1]
-                
-        #     width_left = 0.25
-        #     width_right = 0.25
-        #     speed_limit = 0.30
-
-        #     user_ref_path = RefPath(np.array([x, y]), width_left, width_right, speed_limit, loop=False)
-
-
-        # except Exception as e:
-        #     self.get_logger().warn(f"Virtual RefPath failed: {e}")
-        #     return teleop
-
-        try:
-            centerline = self.user_route.get_shortest_path([initial_x, initial_y, initial_yaw], None, True, False, False, True, 12)
-            centerline = np.asarray(centerline, dtype=float)
-
-            if centerline.ndim != 2 or centerline.shape[0] < 4:
-                self.get_logger().warn("Outer-loop path is empty, invalid, or too short.")
-                return teleop
-
-            user_ref_path = RefPath(np.array([centerline[:, 0], centerline[:, 1]]), centerline[:, 2], centerline[:, 3], centerline[:, 4], loop=False)
-
-        except Exception as e:
-            self.get_logger().warn(f"Outer-loop RefPath failed: {e}")
-            return teleop
+        initial_steering_angle = teleop.drive.steering_angle
 
         # Create np arrays for the state and control
-        initial_state = np.array([initial_x, initial_y, initial_v, initial_yaw, initial_steering_angle])
+        initial_state = np.array([initial_x, initial_y, initial_v, intial_yaw, initial_steering_angle])
         #initial_control = np.array([initial_acc, initial_steering_angle]) 
         # dyn_step uses u = [accel, steering_angle].
 
-        # start_pose = goal.pose
-        # start_pose.position.x, start_pose.position.y= state_after_user_control[0], state_after_user_control[1]
-        # reference_path = self.user_route.get_shortest_path(start_pose, goal.pose)
-
         # From bicyle5d
         # State: [x, y, v, psi, delta]
-		# 	Control: [accel, omega]routing
+		# 	Control: [accel, omega]
 		# 	dx_k = v_k cos(psi_k)
 		# 	dy_k = v_k sin(psi_k)
 		# 	dv_k = accel_k
 		# 	dpsi_k = v_k tan(delta_k) / L
 		# 	ddelta_k = omega_k
         
+        # Roll out user trajectory for 10 time steps
+        state_after_user_control = initial_state.copy() # do not mutate the state 
+        for i in range(10):
+            target_speed = teleop.drive.speed        
+            target_steering = teleop.drive.steering_angle
+            #target_acc = teleop.drive.acceleration
+            target_acc = (target_speed- state_after_user_control[2])/self.dt
+            initial_control = np.array([target_acc, target_steering])   
+            state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
+
+
         # Update obstacles
 
         obstacle_list = []
@@ -442,121 +369,94 @@ class SafetyFilterNode(Node):
         for obs in obstacles.markers:
             _, vertices = get_obstacle_vertices(obs)
             obstacle_list.append(vertices)
-
-        # Set up ILQR planner
-        self.planner.update_obstacles(obstacle_list)
-        user_ref_path = path_callback(routing) # Centerline routing path
-        self.planner.update_ref_path(user_ref_path)
         
-    
-        # Roll out user trajectory and score THIS trajectory directly
-        user_trajectory = np.zeros((5, self.planner.T))
-        user_controls = np.zeros((2, self.planner.T))
-    
-        user_trajectory[:, 0] = initial_state
-        state_after_user_control = initial_state.copy() # do not mutate the state 
-    
-        for i in range(self.planner.T - 1):
-            target_speed = teleop.drive.speed        
-            target_steering = teleop.drive.steering_angle
-            #target_acc = teleop.drive.acceleration
-            target_acc = (target_speed- state_after_user_control[2])/self.dt
-            initial_control = np.array([target_acc, target_steering])
+        # Set up ILQR planner (this line is taken from traj_planner_example.py)
+        #self.planner = ILQR(logger = self.get_logger(), config_file = self.ilqr_params_file) - declared up, it has be initialez once for the class
+        #user_cost = 0 #just for the test
+        user_cost = float("inf")
+        if routing is not None:
+            user_ref_path = path_callback(routing) # Centerline routing path
+            self.planner.update_ref_path(user_ref_path)
+            self.planner.update_obstacles(obstacle_list)
 
-            user_controls[:, i] = initial_control
-            state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
-            user_trajectory[:, i + 1] = state_after_user_control
+            user_plan = self.planner.plan(state_after_user_control, None)
 
-        user_controls[:, -1] = user_controls[:, -2]
-        
-        # Get cost of the human/user trajectory, not the ILQR recovery trajectory
-        path_refs, obs_refs = self.planner.get_references(user_trajectory)
-        user_cost = self.planner.cost.get_traj_cost(user_trajectory, user_controls, path_refs, obs_refs)
-        user_cost = float(user_cost) #just in case for the comparison, even if i think it already returns a float
-        #print('cost :', user_cost)
-        user_state_cost = self.planner.cost.state_cost.get_traj_cost(user_trajectory, user_controls, path_refs)
-        user_obstacle_cost = self.planner.cost.obstacle_cost.get_traj_cost(user_trajectory, user_controls, obs_refs)
+            plan_status = user_plan['status']
+            if plan_status == -1:
+                print("User planning failed")
+                return None #TODO: maybe return something else?
 
-        #Set up ILQR planner (this line is taken from traj_planner_example.py)
+            # if user_ref_path :
+            #     self.planner.update_ref_path(user_ref_path) # Update reference path
+            #     user_plan = self.planner.plan(state_after_user_control, None) # Plan with ILQR based on 10 steps of user control
+            #     # Get cost of planned trajectory
+            #     path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
+            #     user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
+            #     print('cost :', user_cost)
 
+            # Did ILQR actually return a plan from the future state?
+            if user_plan is not None:
+                # Get cost of planned trajectory
+                path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
+                user_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
+                user_state_cost = self.planner.cost.control_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
+                user_obstacle_cost = self.planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
 
-        self.planner.update_obstacles(obstacle_list)
-        user_ref_path = path_callback(routing) # Centerline routing path
-        self.planner.update_ref_path(user_ref_path)
-        
-        user_plan = self.planner.plan(state_after_user_control, None)
-
-        plan_status = user_plan['status']
-        if plan_status == -1:
-            print("User planning failed")
-            return None #TODO: maybe return something else?
-            
-        # Did ILQR actually return a plan from the future state?
-        if user_plan is not None:
-            # Get cost of planned trajectory
-            path_refs, obs_refs = self.planner.get_references(user_plan['trajectory'])
-            recovery_cost = self.planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
-            recovery_state_cost = self.planner.cost.state_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
-            recovery_obstacle_cost = self.planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
+                user_cost = float(user_cost) #just in case for the comparison, even if i think it already returns a float
+                #print('cost :', user_cost)
 
         # If below (very arbitary) threshold, publish user control
-        if user_obstacle_cost > 230:
-            brake_command = AckermannDriveStamped()
-            brake_command.drive.speed = 0.0
-            brake_command.drive.steering_angle = 0.0
-            return brake_command
-        
-        elif user_cost < 90 and recovery_cost < 90: #user_state_cost < 30 and user_obstacle_cost < 40:
+        if user_cost < 100: #and user_state_cost < 45 and user_obstacle_cost < 50:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
             # If the future plan is too expensive, use safety ILQR from the current state
 
-            #if routing is not None:
-            self.planner.update_obstacles(obstacle_list)
-            self.planner.update_ref_path(user_ref_path)
-            safe_plan = self.planner.plan(initial_state, None)
+            if routing is not None:
+                self.planner.update_ref_path(user_ref_path)
+                self.planner.update_obstacles(obstacle_list)
+                safe_plan = self.planner.plan(initial_state, None)
 
-            # If ILQR cannot find a safety plan, brake - or something else, we can change this
-            if safe_plan is None:
-                safe_command = AckermannDriveStamped()
-                safe_command.drive.speed = 0.0
-                safe_command.drive.steering_angle = 0.0
-                return safe_command
-            
-            plan_status = safe_plan['status']
-            if plan_status == -1:
-                print("safe planning failed")
-                safe_command = AckermannDriveStamped()
-                safe_command.drive.speed = 0.0
-                safe_command.drive.steering_angle = 0.0
-                return safe_command
+                plan_status = safe_plan['status']
+                if plan_status == -1:
+                    print("safe planning failed")
+                    return None #TODO: maybe return something else?
+
+                # If ILQR cannot find a safety plan, brake - or something else, we can change this
+                if safe_plan is None:
+                    safe_command = AckermannDriveStamped()
+                    safe_command.drive.speed = 0.0
+                    safe_command.drive.steering_angle = 0.0
+                    return safe_command
                 
-            # ILQR controls use [accel, steering_rate].
-            # /drive needs [speed, steering_angle].
-            safe_control = safe_plan['controls'][:, 0]
-            safe_accel = safe_control[0]
-            safe_steering_rate = safe_control[1]
+                # ILQR controls use [accel, steering_rate].
+                # /drive needs [speed, steering_angle].
+                safe_control = safe_plan['controls'][:, 0]
+                safe_accel = safe_control[0]
+                safe_steering_rate = safe_control[1]
 
-            safe_speed = initial_state[2] + safe_accel * self.planner.dt    # convert from acc to speed
-            safe_steering_angle = initial_state[4] + safe_steering_rate * self.planner.dt # convert from steering rate to angle
-            #print(f"Steering rate {safe_steering_angle}. Initial steering angle: {initial_state[4]}")
+                safe_speed = initial_state[2] + safe_accel * self.planner.dt    # convert from acc to speed
+                safe_steering_angle = initial_state[4] + safe_steering_rate * self.planner.dt # convert from steering rate to angle
+                #print(f"Steering rate {safe_steering_angle}. Initial steering angle: {initial_state[4]}")
 
-            # Should we clamp the angle as well?? - Yep
-            safe_speed = max(0.0, min(1.0, safe_speed))
-            safe_steering_angle = max(-0.34, min(0.34, safe_steering_angle))
+                # Should we clamp the angle as well?? - Yep
+                safe_speed = max(0.0, min(1.0, safe_speed))
+                safe_steering_angle = max(-0.34, min(0.34, safe_steering_angle))
 
-            safe_command = AckermannDriveStamped()
-            safe_command.header.stamp = self.get_clock().now().to_msg()
-            safe_command.drive.speed = safe_speed
-            safe_command.drive.steering_angle = safe_steering_angle
-            safe_command.drive.acceleration = float(safe_accel)
+                safe_command = AckermannDriveStamped()
+                safe_command.header.stamp = self.get_clock().now().to_msg()
+                safe_command.drive.speed = safe_speed
+                safe_command.drive.steering_angle = safe_steering_angle
+                safe_command.drive.acceleration = float(safe_accel)
 
-            #print("Publishing safe command")
-            #print(f"Safe command: Drive speed: {safe_speed}. Steering angle: {safe_steering_angle}")
+                #print("Publishing safe command")
+                #print(f"Safe command: Drive speed: {safe_speed}. Steering angle: {safe_steering_angle}")
 
-            return safe_command
+                return safe_command
       
+            else: 
+                #print("Running teleop because routing is None")
+                return teleop
 
 
 def main(args=None):

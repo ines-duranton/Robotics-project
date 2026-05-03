@@ -474,8 +474,8 @@ class LaneletWrapper:
         '''Return the total length of a 3D linestring.'''
         return lanelet2.geometry.length(line_string)
 
-    @staticmethod
-    def get_lanelet_speed_limit(lanelet):
+    #@staticmethod
+    def get_lanelet_speed_limit(self, lanelet):
         '''Return the speed limit for the given lanelet, defaulting to 2.0 if not present.'''
         if 'speed' in lanelet.attributes:
             return float(lanelet.attributes["speed"])
