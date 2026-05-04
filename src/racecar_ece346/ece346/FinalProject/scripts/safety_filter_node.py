@@ -386,6 +386,18 @@ class SafetyFilterNode(Node):
         initial_v = max(0.0, odom.twist.twist.linear.x) # dunnot if fix, but we also do it in the dym step
         initial_steering_angle = self.last_steering_angle #teleop.drive.steering_angle
 
+        inner_square_x = [1.40, 5.33]
+        inner_square_y = [1.4, 5.3]
+        turn_region_x = [2.75, 3.73]
+        
+        if inner_square_x[0] < initial_x and initial_x < inner_square_x[1] and inner_square_y[0] < initial_y and initial_y < inner_square_y[1] :
+            self.get_logger().info(f"in square, ilqr off")
+            return teleop
+
+        if initial_y >= inner_square_y[1] and turn_region_x[0] < initial_x and initial_x < turn_region_x[1] and initial_steering_angle < 0 : 
+            self.get_logger().info(f"turning into turning region")
+            return teleop
+        
         car_xy = np.array([initial_x, initial_y])
 
         # self.get_logger().info(f"teleop: {teleop}")
@@ -517,10 +529,10 @@ class SafetyFilterNode(Node):
         #     brake_command.drive.steering_angle = 0.0
         #     return brake_command
         
-        # self.get_logger().info(
-        #             f"User cost: {user_cost}"
-        #         )
-        if user_cost < 2: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
+        self.get_logger().info(
+                    f"User cost: {user_cost}"
+                )
+        if user_cost < 80: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
@@ -553,8 +565,11 @@ class SafetyFilterNode(Node):
             path_refs, obs_refs = self.safety_planner.get_references(safe_plan['trajectory'])
             safe_plan_cost = self.safety_planner.cost.get_traj_cost(safe_plan['trajectory'], safe_plan['controls'], path_refs, obs_refs)
 
+            self.get_logger().info(
+                    f"Safe cost: {safe_plan_cost}"
+                )
             # debugging!!
-            if safe_plan_cost > 180:
+            if safe_plan_cost > 230:
 
                 self.get_logger().info(
                     f"Safe plan cost too high"
