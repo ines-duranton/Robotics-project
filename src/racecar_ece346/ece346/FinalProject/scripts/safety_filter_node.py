@@ -182,7 +182,8 @@ class SafetyFilterNode(Node):
         self.declare_parameter('projection_dt')
         self.declare_parameter('total_soft_threshold') # added to make it easy to change
 
-        self.virtual_goals = [(5.4, 5.3), (0.65, 5.61), (2.8, 0.6), (2.8, 5.6), (0.72, 0.53), (5.47, 0.59)]
+        # self.virtual_goals = [(5.4, 5.3), (0.65, 5.61), (2.8, 0.6), (2.8, 5.6), (0.72, 0.53), (5.47, 0.59)]
+        self.virtual_goals = [(0.28, 5.37),(0.8, 0.68),(5.45, 0.66),(5.43, 5.62)]
         self.virtual_goal_idx = 0
         self.virtual_goal_radius = 3
 
@@ -405,6 +406,24 @@ class SafetyFilterNode(Node):
         if routing is None:
             return teleop
         
+        user_ref_path = path_callback(routing)
+        # car_xy = np.array([initial_x, initial_y])
+        # goals = np.array(self.virtual_goals, dtype=float)
+
+        # if routing is None:
+        #     goal_selected = goals[int(np.argmax(np.linalg.norm(goals - car_xy, axis=1)))]
+
+        #     goal_msg = PoseStamped()
+        #     goal_msg.header.stamp = self.get_clock().now().to_msg()
+        #     goal_msg.header.frame_id = "map"
+        #     goal_msg.pose.position.x = float(goal_selected[0])
+        #     goal_msg.pose.position.y = float(goal_selected[1])
+        #     goal_msg.pose.orientation.w = 1.0
+
+        #     self.pub_goal.publish(goal_msg)
+        #     return teleop
+
+        # user_ref_path = path_callback(routing)
         # Create np arrays for the state and control
         initial_state = np.array([initial_x, initial_y, initial_v, initial_yaw, initial_steering_angle])
         #initial_control = np.array([initial_acc, initial_steering_angle]) 
@@ -425,7 +444,7 @@ class SafetyFilterNode(Node):
 
         # Set up monitoring ILQR planner
         self.monitoring_planner.update_obstacles(obstacle_list)
-        user_ref_path = path_callback(routing) # Centerline routing path
+        #user_ref_path = path_callback(routing) # Centerline routing path
         self.monitoring_planner.update_ref_path(user_ref_path)
 
         # Roll out user trajectory and score THIS trajectory directly
@@ -443,21 +462,21 @@ class SafetyFilterNode(Node):
 
             #target_acc = np.clip(target_acc, -1.0, 1.0)
             #target_steering = np.clip(target_steering, -0.34, 0.34)  
-                     
+    
             initial_control = np.array([target_acc, target_steering])
             user_controls[:, i] = initial_control
             state_after_user_control = dyn_step(state_after_user_control, initial_control, self.dt)
             user_trajectory[:, i + 1] = state_after_user_control
 
         user_controls[:, -1] = user_controls[:, -2]
-        
+
         # Get cost of the human/user trajectory
         path_refs, obs_refs = self.monitoring_planner.get_references(user_trajectory)
         user_cost = self.monitoring_planner.cost.get_traj_cost(user_trajectory, user_controls, path_refs, obs_refs)
         user_cost = float(user_cost) #just in case for the comparison, even if i think it already returns a float
         #print('cost :', user_cost)
         # user_state_cost = self.monitoring_planner.cost.state_cost.get_traj_cost(user_trajectory, user_controls, path_refs)
-        # user_obstacle_cost = self.monitoring_planner.cost.obstacle_cost.get_traj_cost(user_trajectory, user_controls, obs_refs)
+        user_obstacle_cost = self.monitoring_planner.cost.obstacle_cost.get_traj_cost(user_trajectory, user_controls, obs_refs)
 
         # #Set up safety ILQR planner (this line is taken from traj_planner_example.py)
 
@@ -491,14 +510,17 @@ class SafetyFilterNode(Node):
         #     recovery_state_cost = self.safety_planner.cost.state_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
         #     recovery_obstacle_cost = self.safety_planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
 
-        # # If below (very arbitary) threshold, publish user control
-        # if user_obstacle_cost > 220:
+        # If below (very arbitary) threshold, publish user control
+        # if user_obstacle_cost > 190:
         #     brake_command = AckermannDriveStamped()
         #     brake_command.drive.speed = 0.0
         #     brake_command.drive.steering_angle = 0.0
         #     return brake_command
         
-        if user_cost < 100: #user_state_cost < 30 and user_obstacle_cost < 40:
+        # self.get_logger().info(
+        #             f"User cost: {user_cost}"
+        #         )
+        if user_cost < 2: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
@@ -519,7 +541,6 @@ class SafetyFilterNode(Node):
             
             plan_status = safe_plan['status']
             if plan_status == -1:
-                print("safe planning failed")
                 safe_command = AckermannDriveStamped()
                 safe_command.drive.speed = 0.0
                 safe_command.drive.steering_angle = self.last_steering_angle
@@ -527,12 +548,13 @@ class SafetyFilterNode(Node):
                     f"safe planning failed"
                 )
                 return safe_command
-            
+
             # Get cost of planned trajectory
             path_refs, obs_refs = self.safety_planner.get_references(safe_plan['trajectory'])
             safe_plan_cost = self.safety_planner.cost.get_traj_cost(safe_plan['trajectory'], safe_plan['controls'], path_refs, obs_refs)
-            
-            if safe_plan_cost > 200:
+
+            # debugging!!
+            if safe_plan_cost > 180:
 
                 self.get_logger().info(
                     f"Safe plan cost too high"
