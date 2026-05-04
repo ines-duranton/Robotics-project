@@ -114,6 +114,6 @@ drive_to_servo_node:
     drive_topic: /drive
     control_topic: /control
     odom_topic: /slam_pose
-    v_max: 1.0          # m/s
+    v_max: 0.3          # m/s
     # a_max and speed_kp use the node's built-in sim defaults (5.0 / 5.0).
     # The truck yaml overrides these to the physical truck limits.
