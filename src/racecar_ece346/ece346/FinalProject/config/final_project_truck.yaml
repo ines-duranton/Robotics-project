@@ -30,7 +30,7 @@ joy_to_ackermann_node:
     steering_axis: 3         # right stick X (left = +steering)
     throttle_sign: 1.0
     steering_sign: 1.0
-    max_speed: 0.5            # m/s 
+    max_speed: 0.3            # m/s 
     max_steering_angle: 0.34  # rad 
     deadzone: 0.05
 
@@ -54,3 +54,14 @@ safety_filter_node:
     total_soft_threshold: 400.0
     total_hard_threshold: 2000.0
     wheelbase: 0.324
+
+routing_node:
+  ros__parameters:
+    odom_topic: /SLAM/Pose
+    lane_change_cost: 1.0
+    goal_with_heading: False
+    clicked_goal: True
+    routing_path_topic: /Routing/Path
+    routing_pathL_topic: /Routing/PathL
+    routing_pathR_topic: /Routing/PathR
+    goal_topic: /goal_pose

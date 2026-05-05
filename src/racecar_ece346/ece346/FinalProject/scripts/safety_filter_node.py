@@ -292,6 +292,7 @@ class SafetyFilterNode(Node):
             if command != None:
                 command.header.stamp = self.get_clock().now().to_msg()
                 self.last_steering_angle = command.drive.steering_angle # added to apply the bicyle model to the last angle state not the joystick request
+                command.drive.speed = max(0.0, min(command.drive.speed, 0.3))
                 self.pub.publish(command)
             return
 
@@ -394,7 +395,7 @@ class SafetyFilterNode(Node):
             self.get_logger().info(f"in square, ilqr off")
             return teleop
 
-        if initial_y >= inner_square_y[1] and turn_region_x[0] < initial_x and initial_x < turn_region_x[1] and initial_steering_angle < 0 : 
+        if initial_y >= inner_square_y[1] and turn_region_x[0] < initial_x and initial_x < turn_region_x[1] and teleop.drive.steering_angle < 0 : 
             self.get_logger().info(f"turning into turning region")
             return teleop
         
@@ -496,11 +497,11 @@ class SafetyFilterNode(Node):
         # user_ref_path = path_callback(routing) # Centerline routing path
         # self.safety_planner.update_ref_path(user_ref_path)
 
-        # if not np.all(np.isfinite(state_after_user_control)):
-        #     self.get_logger().warn("State has NaN/Inf, skipping iLQR")
-        #     return teleop
-        # if not np.all(np.isfinite(user_trajectory)):
-        #     return teleop
+        # # if not np.all(np.isfinite(state_after_user_control)):
+        # #     self.get_logger().warn("State has NaN/Inf, skipping iLQR")
+        # #     return teleop
+        # # if not np.all(np.isfinite(user_trajectory)):
+        # #     return teleop
         
         # user_plan = self.safety_planner.plan(state_after_user_control, None)
         # if user_plan is None:
@@ -529,10 +530,10 @@ class SafetyFilterNode(Node):
         #     brake_command.drive.steering_angle = 0.0
         #     return brake_command
         
-        self.get_logger().info(
-                    f"User cost: {user_cost}"
-                )
-        if user_cost < 80: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
+        # self.get_logger().info(
+        #             f"User cost: {user_cost}"
+        #         )
+        if user_cost < 10: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
@@ -544,12 +545,12 @@ class SafetyFilterNode(Node):
             safe_plan = self.safety_planner.plan(initial_state, None)
 
             # If ILQR cannot find a safety plan, brake - or something else, we can change this
-            if safe_plan is None:
-                safe_command = AckermannDriveStamped()
-                safe_command.drive.speed = 0.0
-                safe_command.drive.steering_angle = self.last_steering_angle
-                self.get_logger().info(f"no safe plan")
-                return safe_command
+            # if safe_plan is None:
+            #     safe_command = AckermannDriveStamped()
+            #     safe_command.drive.speed = 0.0
+            #     safe_command.drive.steering_angle = self.last_steering_angle
+            #     self.get_logger().info(f"no safe plan")
+            #     return safe_command
             
             plan_status = safe_plan['status']
             if plan_status == -1:
@@ -565,11 +566,8 @@ class SafetyFilterNode(Node):
             path_refs, obs_refs = self.safety_planner.get_references(safe_plan['trajectory'])
             safe_plan_cost = self.safety_planner.cost.get_traj_cost(safe_plan['trajectory'], safe_plan['controls'], path_refs, obs_refs)
 
-            self.get_logger().info(
-                    f"Safe cost: {safe_plan_cost}"
-                )
             # debugging!!
-            if safe_plan_cost > 230:
+            if safe_plan_cost > 400:
 
                 self.get_logger().info(
                     f"Safe plan cost too high"
@@ -588,6 +586,10 @@ class SafetyFilterNode(Node):
             safe_speed = initial_state[2] + safe_accel * self.safety_planner.dt    # convert from acc to speed
             safe_steering_angle = initial_state[4] + safe_steering_rate * self.safety_planner.dt # convert from steering rate to angle
             #print(f"Steering rate {safe_steering_angle}. Initial steering angle: {initial_state[4]}")
+
+            self.get_logger().info(
+                    f"Safe cost: {safe_plan_cost} speed {safe_speed}"
+                )
 
             # clamp speed and angle
             safe_speed = max(0.0, min(1.0, safe_speed))

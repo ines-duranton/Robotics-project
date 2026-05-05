@@ -3,7 +3,7 @@
 ####################################################
 num_dim_x: 5
 num_dim_u: 2
-T: 8 # horizon length
+T: 10 # horizon length
 dt: 0.1
  # time step
 platform: "cpu"

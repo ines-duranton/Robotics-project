@@ -151,3 +151,36 @@ class StateCost(BaseCost):
         return path_cost + vel_cost + \
                 lat_accel_cost + heading_cost + \
                 speed_limit_cost+progress_cost + boundary_cost
+    
+    def get_collision(self, state, ref):
+        '''
+        Given a state, control, and time index, return the cost.
+        Input:
+            state: (dim_x) - [x, y, v, psi, delta]
+            ctrl: (dim_u)
+            ref: (dim_ref) reference 
+            time_idx: int (1)
+        return:
+            cost: float
+        '''
+        
+        # Cost for the vehicle's deviation from the reference path
+        slope = ref[self.dim_path_slope]
+        closest_pt_x = ref[self.dim_closest_pt_x]
+        closest_pt_y = ref[self.dim_closest_pt_y]
+
+        sr = jnp.sin(slope)
+        cr = jnp.cos(slope)
+        path_dev = sr * (state[0] - closest_pt_x) - cr *(state[1] - closest_pt_y)
+        path_cost = self.path_cost_func(path_dev, self.path_weight, self.path_delta)
+
+        # boundary_cost
+        right_boundary = ref[self.dim_right_boundary]
+        left_boundary = ref[self.dim_left_boundary]
+        b_right = path_dev - right_boundary + self.width/2.0
+        b_left = -path_dev - left_boundary + self.width/2.0
+
+        if (b_right < -0.1) or (b_left < -0.1) :
+            return True
+        else :
+            return False
