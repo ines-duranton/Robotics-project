@@ -503,9 +503,9 @@ class SafetyFilterNode(Node):
         # # if not np.all(np.isfinite(user_trajectory)):
         # #     return teleop
         
-        # user_plan = self.safety_planner.plan(state_after_user_control, None)
-        # if user_plan is None:
-        #     return teleop
+        user_plan = self.safety_planner.plan(state_after_user_control, None)
+        if user_plan is None:
+            return teleop
 
         # plan_status = user_plan['status']
         # if plan_status == -1:
@@ -515,13 +515,13 @@ class SafetyFilterNode(Node):
         #     )
         #     return None #TODO: maybe return something else?
 
-        # # Did ILQR actually return a plan from the future state?
-        # if user_plan is not None:
-        #     # Get cost of planned trajectory
-        #     path_refs, obs_refs = self.safety_planner.get_references(user_plan['trajectory'])
-        #     recovery_cost = self.safety_planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
-        #     recovery_state_cost = self.safety_planner.cost.state_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
-        #     recovery_obstacle_cost = self.safety_planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
+        # Did ILQR actually return a plan from the future state?
+        if user_plan is not None:
+            # Get cost of planned trajectory
+            path_refs, obs_refs = self.safety_planner.get_references(user_plan['trajectory'])
+            recovery_cost = self.safety_planner.cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs, obs_refs)
+            recovery_state_cost = self.safety_planner.cost.state_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], path_refs)
+            recovery_obstacle_cost = self.safety_planner.cost.obstacle_cost.get_traj_cost(user_plan['trajectory'], user_plan['controls'], obs_refs)
 
         # If below (very arbitary) threshold, publish user control
         # if user_obstacle_cost > 190:
@@ -533,7 +533,7 @@ class SafetyFilterNode(Node):
         # self.get_logger().info(
         #             f"User cost: {user_cost}"
         #         )
-        if user_cost < 8: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
+        if user_cost < 10 and user_cost + recovery_cost < 12: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:
