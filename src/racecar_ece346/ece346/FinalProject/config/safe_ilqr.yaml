@@ -60,7 +60,7 @@ a_max: 1.0 # maximum acceleration
 a_min: -1.0 # minimum acceleration
 
 # reference velocity
-v_ref: 0.0 # reference velocity
+v_ref: 0.0 # reference velocity #changed during demo, lowkey may not work
 ####################################################
 ########## Parameters for ILQR COST ################
 ####################################################
