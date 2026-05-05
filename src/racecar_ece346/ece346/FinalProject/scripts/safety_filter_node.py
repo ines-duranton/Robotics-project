@@ -389,13 +389,13 @@ class SafetyFilterNode(Node):
 
         inner_square_x = [1.40, 5.33]
         inner_square_y = [1.4, 5.3]
-        turn_region_x = [2.75, 3.73]
+        turn_region_x = [2.75, 3.3]
         
         if inner_square_x[0] < initial_x and initial_x < inner_square_x[1] and inner_square_y[0] < initial_y and initial_y < inner_square_y[1] :
             self.get_logger().info(f"in square, ilqr off")
             return teleop
 
-        if initial_y >= inner_square_y[1] and turn_region_x[0] < initial_x and initial_x < turn_region_x[1] and teleop.drive.steering_angle < 0 : 
+        if initial_y >= inner_square_y[1] and turn_region_x[0] < initial_x and initial_x < turn_region_x[1] and teleop.drive.steering_angle > 0.1 : 
             self.get_logger().info(f"turning into turning region")
             return teleop
         
@@ -493,9 +493,9 @@ class SafetyFilterNode(Node):
 
         # #Set up safety ILQR planner (this line is taken from traj_planner_example.py)
 
-        # self.safety_planner.update_obstacles(obstacle_list)
-        # user_ref_path = path_callback(routing) # Centerline routing path
-        # self.safety_planner.update_ref_path(user_ref_path)
+        self.safety_planner.update_obstacles(obstacle_list)
+        user_ref_path = path_callback(routing) # Centerline routing path
+        self.safety_planner.update_ref_path(user_ref_path)
 
         # # if not np.all(np.isfinite(state_after_user_control)):
         # #     self.get_logger().warn("State has NaN/Inf, skipping iLQR")
@@ -533,7 +533,7 @@ class SafetyFilterNode(Node):
         # self.get_logger().info(
         #             f"User cost: {user_cost}"
         #         )
-        if user_cost < 10: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
+        if user_cost < 8: #220: #user_state_cost < 30 and user_obstacle_cost < 40:
             #print("Running teleop because user plan cost is low")
             return teleop
         else:

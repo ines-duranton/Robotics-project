@@ -231,8 +231,7 @@ Visualization Manager:
       Enabled: true
       Name: dyn_obs
       Namespaces:
-        obs: true
-        obs_arrow: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -256,7 +255,7 @@ Visualization Manager:
       Enabled: true
       Name: fp_click_target
       Namespaces:
-        fp_click_target: true
+        {}
       Topic:
         Depth: 5
         Durability Policy: Volatile
