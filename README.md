@@ -46,6 +46,8 @@ Everything can be found in the second branch of this repository (lab instruction
 
 ## Repository Organization
 
+[src/simulation](https://github.com/ines-duranton/Robotics-project).
+
 The repository is organized according to the different laboratory sessions.
 
 ```text
