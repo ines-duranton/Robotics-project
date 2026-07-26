@@ -8,7 +8,11 @@ The course introduces the software components required to build autonomous robot
 
 Rather than developing an application from scratch, I completed the programming tasks associated with each lab using the provided framework. My contributions include the implementation of the required algorithms, integration with the existing codebase and validation of the proposed solutions. In contrary, the final project gave an opportunity to decide on our own implementation to solve a robotics problem.
 
-!!!Explain the car, the labs and project structure of the semester
+The class used the ROS2 environment to test new concepts in simulation and on a small-scale car. The car was built by the TAs especially for the class, and was controlled manually with a PS4. A large car track was also created to reproduce different paths and intersections.
+
+Most of the semester was dedicated to understanding new concepts through labs, in simulation and with the car. After this, two weeks were dedicated to the final project, from ideation to presentation and demonstration.
+
+!!!Add video ?
 
 ---
 
@@ -31,7 +35,7 @@ The final project combines these concepts into a complete autonomous robotics pi
 
 ## My Contributions
 
-I completed all required programming assignments, including:
+With my group, I completed all required programming assignments, including:
 
 - implementation of the algorithms requested in each laboratory
 - integration of the implemented components into the provided software architecture
@@ -40,55 +44,40 @@ I completed all required programming assignments, including:
 - completion of the final project.
 
 The original framework, simulation environment and laboratory instructions were provided as part of the course. The algorithmic implementations contained in the designated lab exercises and project tasks are my own work.
-Everything can be found in the second branch of this repository (lab instructions, labs and project)
+Everything can be found in the second branch of this repository (lab instructions, labs and project).
+
+!!!Explain what was done in each lab and the solution for the final project
 
 ---
 
 ## Repository Organization
 
-[src/simulation](https://github.com/ines-duranton/Robotics-project).
+All the files that were needed during the labs and the projects can be found in [ece346](https://github.com/ines-duranton/Robotics-project/tree/projectAndLabs/src/racecar_ece346/ece346).
 
-The repository is organized according to the different laboratory sessions.
+The folder is organized according to the different lab sessions and the final project.
 
 ```text
+lab0/
 lab1/
 lab2/
 lab3/
-lab4/
-lab5/
 ...
 final_project/
 ```
 
 Each directory contains:
 
-- starter code provided for the course;
-- implementation files completed during the lab;
-- launch and configuration files;
-- documentation and scripts when required.
+- instructions for each task
+- starter code provided for the course
+- implementation files completed during the lab
+- launch and configuration files
+- documentation and scripts when required
 
 > **My work is primarily located in the implementation (`.cpp`, `.py`) files inside each laboratory folder and in the final project directory.**
 
 ---
 
-## Skills Demonstrated
-
-Working on this repository allowed me to gain practical experience with:
-
-- Robot Operating System (ROS)
-- C++ and Python development
-- Robotics software architecture
-- Motion planning
-- Trajectory generation
-- Collision avoidance
-- Autonomous navigation
-- Algorithm implementation
-- Debugging large software projects
-- Working within an existing codebase
-
----
-
-## What I Learned
+## Learning output
 
 This course emphasized both robotics algorithms and software engineering practices.
 
@@ -99,8 +88,6 @@ Beyond implementing individual algorithms, I learned how to:
 - integrate new functionalities into a larger codebase;
 - validate algorithms through simulation;
 - debug interactions between multiple software components.
-
-These experiences strengthened both my programming skills and my understanding of autonomous robotic systems.
 
 ---
 
