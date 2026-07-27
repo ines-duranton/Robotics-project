@@ -13,7 +13,7 @@ The class used the ROS2 environment to test new concepts in simulation and on a 
 Most of the semester was dedicated to understanding new concepts through labs, in simulation and with the car. After this, two weeks were dedicated to the final project, from ideation to presentation and demonstration.
 
 <p align="center">
-  <img src="RViz%20visualizataion%20tool.png" width="700" alt="Visualization tool">
+  <img src="https://raw.usergithubcontent.com/ines-duranton/Robotics-project/blob/main/RViz%20visualization%20tool.png" width="700" alt="Visualization tool">
 </p>
 
 ---
