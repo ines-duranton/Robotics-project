@@ -14,6 +14,7 @@ Most of the semester was dedicated to understanding new concepts through labs, i
 
 <p align="center">
   <img src="RViz visualization tool.png" width="700" alt="Visualization tool">
+  <em>Simulation of the car, represented in orange, on the tracks</em>
 </p>
 
 ---
