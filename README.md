@@ -12,11 +12,6 @@ The class used the ROS2 environment to test new concepts in simulation and on a 
 
 Most of the semester was dedicated to understanding new concepts through labs, in simulation and with the car. After this, two weeks were dedicated to the final project, from ideation to presentation and demonstration.
 
-<p align="center">
-  <img src="RViz visualization tool.png" width="700" alt="Visualization tool">
-  <br/>
-  <em>Simulation of the car, represented in orange, on the tracks</em>
-</p>
 
 <p align="center">
   <img src="RViz visualization tool.png" width="700" alt="Visualization tool">
@@ -25,13 +20,13 @@ Most of the semester was dedicated to understanding new concepts through labs, i
 </p>
 
 <p align="center">
-  <img src="truck.jpg" width="700" alt="Picture of the truck">
+  <img src="truck.jpeg" width="700" alt="Picture of the truck">
   <br/>
   <em>Small-scale car used during the semester</em>
 </p>
 
 <p align="center">
-  <img src="tracks.jpg" width="700" alt="Picture of the tracks">
+  <img src="tracks.jpeg" width="700" alt="Picture of the tracks">
   <br/>
   <em>Tracks created to run the real-life experiments</em>
 </p>
