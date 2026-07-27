@@ -50,7 +50,7 @@ The final project combines these concepts into a complete autonomous robotics pi
 
 ---
 
-## My Contributions
+## Contributions
 
 With my group, I completed all required programming assignments, including:
 
@@ -63,7 +63,22 @@ With my group, I completed all required programming assignments, including:
 The original framework, simulation environment and laboratory instructions were provided as part of the course. The algorithmic implementations contained in the designated lab exercises and project tasks are my own work.
 Everything can be found in the second branch of this repository (lab instructions, labs and project).
 
-!!!Explain what was done in each lab and the solution for the final project
+The topic and goals of each lab are presented below : 
+
+| Lab | Topic | Accomplishments |
+|---|---|---|
+| Lab 0 | Introduction to ROS2 | Get familiar with basic ROS2 concepts (publishers, subscribers, ...), create a goal-reaching controller for the robot (that doesn't take into account the tracks) |
+| Lab 1 | Trajectory planning with ILQR | Implement the ILQR algorithm for the dynamics of the car, deduce a feedback control policy from it, use ILQR to create a receding horizon planner |
+| Lab 2 | Small-scale truck | Get the small-scale truck running, test it with the algorithms created in the previous two labs |
+| Lab 3 | Collision avoidance | Include static obstacles in the ILQR algorithm to avoid them, use forward reachable sets to avoid a dynamic obstacle (another car in the simulation) |
+| Lab 4 | MDP and POMDP | Implement an MDP for the negociation of a T-intersection, use value iteration and policy iteration to determine the actions to take, replace it with a POMDP to account for the uncertain position of the other car in the intersection |
+| Lab 5 | Behavioral cloning | Collect data by manually running the car along the tracks, create a neural network that is trained offline on the collected data, test the policy deduced by the network on the car |
+
+Finally, the goal of the final project was to create a safety filter for the car : if the action the human wants to take with the car is considered unsafe, the safety filter takes over and decides on a better action to take to avoid danger. 
+
+Considering the time and ressources, we decided with the group to use a cost-based implementation for this problem. To decide if the proposed action is safe, we compute the cost of taking that action a few times more and then trying to recover with ILQR. Through different tests, we determined a threshold on that cost that indicated wether the action was safe or not. If the cost is higher than the threshold, the safety filter takes over. Otherwise, the action the human wants to take is safe enough and can go through. 
+
+When the safety filter takes over, there are again two options. First ILQR finds the best action to be taken, without considering what the human wants to do. If the cost of taking that action and continuing with the safest trajectory is low enough, the safe action is the on that is sent to the car. But if the cost of the safe action and the safe trajectory is too high, the car has to brake immediately and come to a stop to avoid a collision or going off tracks.
 
 ---
 
